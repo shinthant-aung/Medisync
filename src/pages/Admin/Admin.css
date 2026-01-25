@@ -1,0 +1,200 @@
+/* src/pages/Admin/Admin.css */
+
+/* --- LAYOUT --- */
+.admin-container {
+  display: flex;
+  height: 100vh;
+  background-color: #f8fafc; /* Light background for the content area */
+}
+
+/* --- SIDEBAR --- */
+.sidebar {
+  width: 260px;
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  justify-content: space-between;
+}
+
+.sidebar-brand {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #1e293b;
+  margin-bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-grow: 1;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: #64748b;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-item:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.nav-item.active {
+  background-color: #eef2ff; /* Light blue background */
+  color: #4f46e5; /* Indigo text */
+  font-weight: 600;
+}
+
+.user-profile {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar-circle {
+  width: 40px;
+  height: 40px;
+  background-color: #e2e8f0;
+  border-radius: 50%;
+}
+
+.user-info h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1e293b;
+}
+.user-info span {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+/* --- MAIN CONTENT AREA --- */
+.admin-content {
+  flex-grow: 1;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+/* --- COMMON HEADERS --- */
+.page-header {
+  margin-bottom: 30px;
+}
+
+.page-title {
+  font-size: 1.8rem;
+  color: #1e293b;
+  margin-bottom: 10px;
+}
+
+/* --- FORMS (Booking & New Patient) --- */
+.form-card {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  max-width: 800px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.full-width {
+  grid-column: span 2;
+}
+
+.admin-input,
+.admin-select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: #f1f5f9; /* Grey input background from design */
+  margin-top: 5px;
+}
+
+.submit-btn {
+  background-color: white;
+  border: 1px solid #1e293b;
+  color: #1e293b;
+  padding: 10px 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  float: right;
+  margin-top: 20px;
+}
+.submit-btn:hover {
+  background-color: #f8fafc;
+}
+
+/* --- TABLES (Lists) --- */
+.table-container {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.search-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.search-input {
+  padding: 8px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  width: 250px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background-color: #e2e8f0; /* Grey header background */
+}
+
+th {
+  text-align: left;
+  padding: 15px;
+  color: #1e293b;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+td {
+  padding: 15px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* Skeleton bars for empty states (to match your wireframe look) */
+.skeleton-bar {
+  height: 12px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  width: 80%;
+}

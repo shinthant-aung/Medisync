@@ -1,0 +1,228 @@
+/* src/pages/Doctor/Doctor.css */
+
+/* --- LAYOUT --- */
+.doctor-container {
+  display: flex;
+  height: 100vh;
+  background-color: #ffffff;
+}
+
+/* --- SIDEBAR --- */
+.sidebar {
+  width: 260px;
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  justify-content: space-between;
+}
+
+.sidebar-brand {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #1e293b;
+  margin-bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-grow: 1;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: #64748b;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-item:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.nav-item.active {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.user-profile {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar-circle {
+  width: 40px;
+  height: 40px;
+  background-color: #e2e8f0;
+  border-radius: 50%;
+}
+
+.user-info h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1e293b;
+}
+.user-info span {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+/* --- MAIN CONTENT --- */
+.doctor-content {
+  flex-grow: 1;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.search-input {
+  padding: 10px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  width: 300px;
+  background-color: #f8fafc;
+}
+
+/* --- WELCOME CARD --- */
+.welcome-card {
+  border: 1px solid #e2e8f0; /* Fixed border color */
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.welcome-card h2 {
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+.welcome-card p {
+  color: #64748b;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* --- TABLES --- */
+.table-header {
+  background-color: #e5e5e5;
+  padding: 15px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+}
+
+.table-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* THIS IS THE MISSING PART THAT MAKES DATA VISIBLE */
+.row-bar {
+  height: 12px;
+  background-color: #e2e8f0; /* Grey color for bars */
+  border-radius: 6px;
+  width: 100%;
+  display: block; /* Ensures it takes up space */
+}
+
+.select-btn {
+  background: white;
+  border: 1px solid #000;
+  border-radius: 20px;
+  padding: 5px 20px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.select-btn:hover {
+  background-color: #f8fafc;
+}
+
+/* --- QUANTITY CONTROLS (Medicine Page) --- */
+.qty-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.circle-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.enter-btn {
+  float: right;
+  margin-top: 20px;
+  padding: 10px 40px;
+  border: 1px solid #000;
+  background: white;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* --- CHARTS (Fake CSS Charts) --- */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.chart-box {
+  text-align: center;
+}
+
+.chart-placeholder {
+  height: 200px; /* Gives the chart height */
+  background-color: #f1f5f9;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  padding: 20px;
+  margin-bottom: 15px;
+}
+
+.bar {
+  width: 20px;
+  background-color: #64748b; /* Grey color for bars */
+  border-radius: 4px 4px 0 0;
+}
+
+.pie-placeholder {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: conic-gradient(#94a3b8 0% 25%, #cbd5e1 25% 60%, #64748b 60% 100%);
+  margin: 0 auto;
+}
