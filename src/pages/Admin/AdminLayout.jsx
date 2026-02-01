@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+// src/pages/Admin/AdminLayout.jsx
+import React, { useState, useEffect } from "react";
 import "./Admin.css";
 
-// Import all your pages (We will create these next)
+// Import all your pages
 import AdminDashboard from "./AdminDashboard";
 import Booking from "./Booking";
 import NewPatient from "./NewPatient";
@@ -12,6 +13,25 @@ import NurseList from "./NurseList";
 const AdminLayout = ({ onLogout }) => {
   // State to track which page is active
   const [activePage, setActivePage] = useState("dashboard");
+
+  // NEW: State to store the User's Name & Email
+  const [user, setUser] = useState({
+    name: "Admin",
+    email: "admin@hospital.com",
+  });
+
+  // NEW: Fetch real user data when the page loads
+  useEffect(() => {
+    const savedName = localStorage.getItem("userFullName");
+    const savedEmail = localStorage.getItem("userEmail");
+
+    if (savedName) {
+      setUser({
+        name: savedName,
+        email: savedEmail || "No Email Found",
+      });
+    }
+  }, []);
 
   // Helper to render the correct component
   const renderContent = () => {
@@ -38,7 +58,7 @@ const AdminLayout = ({ onLogout }) => {
       {/* SIDEBAR */}
       <div className="sidebar">
         <div>
-          <div className="sidebar-brand">☒ MediSync</div>
+          <div className="sidebar-brand">✚ MediSync</div>
           <nav className="nav-links">
             <div
               className={`nav-item ${
@@ -85,12 +105,15 @@ const AdminLayout = ({ onLogout }) => {
           </nav>
         </div>
 
-        {/* User Profile at Bottom */}
+        {/* --- DYNAMIC USER PROFILE SECTION --- */}
         <div className="user-profile">
-          <div className="avatar-circle"></div>
           <div className="user-info">
-            <h4>Admin_Name</h4>
-            <span>admin.com</span>
+            {/* Show Real Name */}
+            <h4>{user.name}</h4>
+            {/* Show Real Email */}
+            <span style={{ fontSize: "0.8rem", color: "#cbd5e1" }}>
+              {user.email}
+            </span>
           </div>
           <button
             onClick={onLogout}
@@ -99,9 +122,11 @@ const AdminLayout = ({ onLogout }) => {
               border: "none",
               background: "transparent",
               cursor: "pointer",
+              fontSize: "0.8rem",
             }}
+            title="Logout"
           >
-            🚪
+            Logout
           </button>
         </div>
       </div>
