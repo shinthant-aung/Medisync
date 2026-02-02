@@ -10,15 +10,14 @@ const NurseCheckIn = () => {
   const [selectedAppt, setSelectedAppt] = useState(null);
 
   // VITALS FORM STATE
-  // REMOVED 'prescriptions' from here so Nurse cannot add them
+  // Only track the fields that exist in vital_signs table
   const [vitals, setVitals] = useState({
+    blood_pressure: "",
+    temperature: "",
+    heart_rate: "",
     height: "",
     weight: "",
-    pulse_rate: "",
-    temperature: "",
-    blood_pressure: "",
     spo2: "",
-    allergies: "",
   });
 
   // 1. Fetch Appointments (With Filter to remove Mike Ross/Michael Brown)
@@ -45,15 +44,14 @@ const NurseCheckIn = () => {
   // 2. Open Modal
   const handleRecordClick = (appt) => {
     setSelectedAppt(appt);
-    // Reset form (No prescription field)
+    // Reset form with only the vitals we need
     setVitals({
+      blood_pressure: "",
+      temperature: "",
+      heart_rate: "",
       height: "",
       weight: "",
-      pulse_rate: "",
-      temperature: "",
-      blood_pressure: "",
       spo2: "",
-      allergies: "",
     });
     setShowModal(true);
   };
@@ -69,13 +67,11 @@ const NurseCheckIn = () => {
     if (!selectedAppt) return;
 
     try {
-      // We send an empty string for prescription since Nurse can't add it
       const response = await fetch("http://localhost:5001/vitals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patient_name: selectedAppt.patient_name,
-          prescriptions: "", // Force empty prescription for Nurse
           ...vitals,
         }),
       });
@@ -85,7 +81,8 @@ const NurseCheckIn = () => {
         setShowModal(false);
         fetchAppointments(); // Refresh list
       } else {
-        alert("❌ Failed to save.");
+        const errorData = await response.json();
+        alert("❌ Failed to save: " + (errorData.error || "Unknown error"));
       }
     } catch (err) {
       console.error("Error saving:", err);
@@ -173,7 +170,7 @@ const NurseCheckIn = () => {
                   colSpan="5"
                   style={{ padding: "20px", textAlign: "center" }}
                 >
-                  Loading schedule...
+                  No patient
                 </td>
               </tr>
             ) : filteredList.length === 0 ? (
@@ -297,84 +294,81 @@ const NurseCheckIn = () => {
             >
               <div style={rowStyle}>
                 <div style={fieldGroupStyle}>
-                  <label style={labelStyle}>Height</label>
-                  <input
-                    name="height"
-                    value={vitals.height}
-                    onChange={handleChange}
-                    style={inputStyle}
-                  />
-                </div>
-                <div style={fieldGroupStyle}>
-                  <label style={labelStyle}>Weight</label>
-                  <input
-                    name="weight"
-                    value={vitals.weight}
-                    onChange={handleChange}
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
-              <div style={rowStyle}>
-                <div style={fieldGroupStyle}>
-                  <label style={labelStyle}>Pulse Rate</label>
-                  <input
-                    name="pulse_rate"
-                    value={vitals.pulse_rate}
-                    onChange={handleChange}
-                    style={inputStyle}
-                  />
-                </div>
-                <div style={fieldGroupStyle}>
-                  <label style={labelStyle}>Temperature</label>
-                  <input
-                    name="temperature"
-                    value={vitals.temperature}
-                    onChange={handleChange}
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
-              <div style={rowStyle}>
-                <div style={fieldGroupStyle}>
-                  <label style={labelStyle}>Blood Pressure</label>
+                  <label style={labelStyle}>Blood Pressure (mmHg)</label>
                   <input
                     name="blood_pressure"
                     value={vitals.blood_pressure}
                     onChange={handleChange}
+                    placeholder="e.g. 120/80"
+                    style={inputStyle}
+                    required
+                  />
+                </div>
+                <div style={fieldGroupStyle}>
+                  <label style={labelStyle}>Temperature (°C)</label>
+                  <input
+                    name="temperature"
+                    type="number"
+                    step="0.1"
+                    value={vitals.temperature}
+                    onChange={handleChange}
+                    placeholder="e.g. 36.6"
+                    style={inputStyle}
+                    required
+                  />
+                </div>
+              </div>
+              <div style={rowStyle}>
+                <div style={fieldGroupStyle}>
+                  <label style={labelStyle}>Heart Rate (bpm)</label>
+                  <input
+                    name="heart_rate"
+                    type="number"
+                    value={vitals.heart_rate}
+                    onChange={handleChange}
+                    placeholder="e.g. 80"
+                    style={inputStyle}
+                    required
+                  />
+                </div>
+                <div style={fieldGroupStyle}>
+                  <label style={labelStyle}>Height (cm)</label>
+                  <input
+                    name="height"
+                    type="number"
+                    step="0.1"
+                    value={vitals.height}
+                    onChange={handleChange}
+                    placeholder="e.g. 175"
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+              <div style={rowStyle}>
+                <div style={fieldGroupStyle}>
+                  <label style={labelStyle}>Weight (kg)</label>
+                  <input
+                    name="weight"
+                    type="number"
+                    step="0.1"
+                    value={vitals.weight}
+                    onChange={handleChange}
+                    placeholder="e.g. 70"
                     style={inputStyle}
                   />
                 </div>
                 <div style={fieldGroupStyle}>
-                  <label style={labelStyle}>SPO2</label>
+                  <label style={labelStyle}>SPO2 (%)</label>
                   <input
                     name="spo2"
+                    type="number"
                     value={vitals.spo2}
                     onChange={handleChange}
+                    placeholder="e.g. 98"
                     style={inputStyle}
                   />
                 </div>
               </div>
-
-              {/* ALLERGIES ONLY */}
-              <div style={fieldGroupStyle}>
-                <label style={{ ...labelStyle, color: "#dc2626" }}>
-                  Allergies
-                </label>
-                <input
-                  name="allergies"
-                  placeholder="e.g. Peanuts, None"
-                  value={vitals.allergies}
-                  onChange={handleChange}
-                  style={{
-                    ...inputStyle,
-                    border: "1px solid #fca5a5",
-                    backgroundColor: "#fef2f2",
-                  }}
-                />
-              </div>
-
-              {/* REMOVED PRESCRIPTION BOX FROM HERE */}
 
               <div
                 style={{

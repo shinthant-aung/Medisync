@@ -2,11 +2,11 @@ import React, { useState } from "react";
 
 const NewPatient = () => {
   const [formData, setFormData] = useState({
-    full_name: "",
+    name: "",
     gender: "",
     date_of_birth: "",
-    email: "",
-    allergies: "",
+    phone: "",
+    address: "",
   });
 
   const handleChange = (e) => {
@@ -26,11 +26,11 @@ const NewPatient = () => {
         alert("Patient Registered Successfully!");
         // Clear form
         setFormData({
-          full_name: "",
+          name: "",
           gender: "",
           date_of_birth: "",
-          email: "",
-          allergies: "",
+          phone: "",
+          address: "",
         });
       } else {
         alert("Failed to register patient");
@@ -70,8 +70,8 @@ const NewPatient = () => {
             </label>
             <input
               type="text"
-              name="full_name"
-              value={formData.full_name}
+              name="name"
+              value={formData.name}
               onChange={handleChange}
               placeholder="Enter Full Name"
               required
@@ -163,14 +163,14 @@ const NewPatient = () => {
                 fontWeight: "500",
               }}
             >
-              Email
+              Phone Number
             </label>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type="tel"
+              name="phone"
+              value={formData.phone}
               onChange={handleChange}
-              placeholder="e.g patient@example.com"
+              placeholder="e.g +95912345678"
               required
               style={{
                 width: "100%",
@@ -191,14 +191,15 @@ const NewPatient = () => {
                 fontWeight: "500",
               }}
             >
-              Known Allergies
+              Address
             </label>
             <input
               type="text"
-              name="allergies"
-              value={formData.allergies}
+              name="address"
+              value={formData.address}
               onChange={handleChange}
-              placeholder="e.g Peanuts, Aspirin"
+              placeholder="e.g 123 Main Street, Bangkok"
+              required
               style={{
                 width: "100%",
                 padding: "12px",

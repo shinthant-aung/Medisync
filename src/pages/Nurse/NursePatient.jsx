@@ -14,7 +14,7 @@ const NursePatient = () => {
 
   // 2. Filter Patients
   const filteredPatients = patients.filter((patient) =>
-    patient.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+    patient.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -98,9 +98,9 @@ const NursePatient = () => {
             {/* Gray Header Row */}
             <tr style={{ backgroundColor: "#e5e5e5", textAlign: "left" }}>
               <th style={thStyle}>Name</th>
-              <th style={thStyle}>Email</th>
               <th style={thStyle}>Gender</th>
-              <th style={thStyle}>Allergies</th>
+              <th style={thStyle}>Phone</th>
+              <th style={thStyle}>Date of Birth</th>
             </tr>
           </thead>
           <tbody>
@@ -121,33 +121,20 @@ const NursePatient = () => {
             ) : (
               filteredPatients.map((patient) => (
                 <tr
-                  key={patient.id}
+                  key={patient.patient_id}
                   style={{ borderBottom: "1px solid #f3f4f6" }}
                 >
                   <td style={tdStyle}>
                     <span style={{ fontWeight: "600", color: "#111827" }}>
-                      {patient.full_name}
+                      {patient.name}
                     </span>
                   </td>
-                  <td style={tdStyle}>{patient.email}</td>
-                  <td style={tdStyle}>{patient.gender}</td>
+                  <td style={tdStyle}>{patient.gender || "-"}</td>
+                  <td style={tdStyle}>{patient.phone || "-"}</td>
                   <td style={tdStyle}>
-                    {patient.allergies ? (
-                      <span
-                        style={{
-                          color: "#dc2626",
-                          fontWeight: "600",
-                          backgroundColor: "#fee2e2",
-                          padding: "4px 10px",
-                          borderRadius: "12px",
-                          fontSize: "0.85rem",
-                        }}
-                      >
-                        {patient.allergies}
-                      </span>
-                    ) : (
-                      <span style={{ color: "#9ca3af" }}>None</span>
-                    )}
+                    {patient.date_of_birth
+                      ? patient.date_of_birth.split("T")[0]
+                      : "-"}
                   </td>
                 </tr>
               ))

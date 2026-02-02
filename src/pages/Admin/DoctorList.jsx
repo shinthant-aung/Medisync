@@ -8,10 +8,10 @@ const DoctorList = () => {
 
   // Form Data
   const [formData, setFormData] = useState({
-    full_name: "",
+    name: "",
     email: "",
-    specialty: "",
-    username: "",
+    specialization: "",
+    phone: "",
     password: "",
   });
 
@@ -53,14 +53,27 @@ const DoctorList = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Add "Dr." prefix if not already present
+      const dataToSend = {
+        ...formData,
+        name: formData.name.startsWith("Dr.") ? formData.name : `Dr. ${formData.name}`,
+      };
+      
       const response = await fetch("http://localhost:5001/doctors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
       if (response.ok) {
         alert("Doctor Created!");
         setShowForm(false);
+        setFormData({
+          name: "",
+          email: "",
+          specialization: "",
+          phone: "",
+          password: "",
+        });
         fetchDoctors();
       } else {
         alert("Error creating doctor.");
@@ -75,7 +88,7 @@ const DoctorList = () => {
   };
 
   const filteredDoctors = doctors.filter((doc) =>
-    doc.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+    doc.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -136,8 +149,9 @@ const DoctorList = () => {
             style={{ display: "grid", gap: "15px" }}
           >
             <input
-              name="full_name"
+              name="name"
               placeholder="Full Name"
+              value={formData.name}
               onChange={handleChange}
               required
               className="nurse-input"
@@ -145,24 +159,23 @@ const DoctorList = () => {
             <input
               name="email"
               placeholder="Email"
+              value={formData.email}
               onChange={handleChange}
               required
               className="nurse-input"
             />
-            <select
-              name="specialty"
+            <input
+              name="specialization"
+              placeholder="Specialization (e.g., Cardiology)"
+              value={formData.specialization}
               onChange={handleChange}
               required
               className="nurse-input"
-            >
-              <option value="">Select Specialty</option>
-              <option value="Cardiologist">Cardiologist</option>
-              <option value="Neurologist">Neurologist</option>
-              <option value="General">General</option>
-            </select>
+            />
             <input
-              name="username"
-              placeholder="Username"
+              name="phone"
+              placeholder="Phone Number"
+              value={formData.phone}
               onChange={handleChange}
               required
               className="nurse-input"
@@ -171,12 +184,13 @@ const DoctorList = () => {
               name="password"
               type="password"
               placeholder="Password"
+              value={formData.password}
               onChange={handleChange}
               required
               className="nurse-input"
             />
             <button type="submit" className="submit-btn">
-              Create Account
+              Create Doctor
             </button>
           </form>
         </div>
@@ -187,9 +201,9 @@ const DoctorList = () => {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Action</th> {/* NEW COLUMN */}
+                <th>Specialization</th>
+                <th>Phone</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -199,33 +213,15 @@ const DoctorList = () => {
                 </tr>
               ) : (
                 filteredDoctors.map((doctor) => (
-                  <tr key={doctor.id}>
-                    <td style={{ fontWeight: "500" }}>{doctor.full_name}</td>
-                    <td style={{ color: "#64748b" }}>{doctor.email}</td>
-                    <td>{doctor.specialty}</td>
-                    <td>
-                      <span
-                        style={{
-                          padding: "5px 10px",
-                          borderRadius: "15px",
-                          fontSize: "0.8rem",
-                          backgroundColor:
-                            doctor.availability_status === "Available"
-                              ? "#dcfce7"
-                              : "#fee2e2",
-                          color:
-                            doctor.availability_status === "Available"
-                              ? "#166534"
-                              : "#991b1b",
-                        }}
-                      >
-                        {doctor.availability_status}
-                      </span>
-                    </td>
+                  <tr key={doctor.doctor_id}>
+                    <td style={{ fontWeight: "500" }}>{doctor.name}</td>
+                    <td style={{ color: "#64748b" }}>{doctor.email || "-"}</td>
+                    <td>{doctor.specialization || "-"}</td>
+                    <td>{doctor.phone || "-"}</td>
                     <td>
                       {/* REMOVE BUTTON */}
                       <button
-                        onClick={() => handleDelete(doctor.id)}
+                        onClick={() => handleDelete(doctor.doctor_id)}
                         style={{
                           background: "#fee2e2",
                           color: "#991b1b",

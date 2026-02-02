@@ -9,10 +9,11 @@ const PatientList = () => {
 
   // Form Data State
   const [formData, setFormData] = useState({
-    full_name: "",
-    email: "",
-    last_visit_date: "",
-    next_appointment_date: "",
+    name: "",
+    gender: "",
+    date_of_birth: "",
+    phone: "",
+    address: "",
   });
 
   // 1. Fetch Patients Function (Reusable)
@@ -72,10 +73,11 @@ const PatientList = () => {
         setShowForm(false); // Switch back to list view
         fetchPatients(); // Refresh list to show new person
         setFormData({
-          full_name: "",
-          email: "",
-          last_visit_date: "",
-          next_appointment_date: "",
+          name: "",
+          gender: "",
+          date_of_birth: "",
+          phone: "",
+          address: "",
         }); // Clear form
       } else {
         alert("Failed to add patient");
@@ -94,8 +96,8 @@ const PatientList = () => {
   // 4. Filter Logic (Search)
   const filteredPatients = patients.filter(
     (patient) =>
-      patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.email.toLowerCase().includes(searchTerm.toLowerCase())
+      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (patient.phone && patient.phone.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -172,8 +174,8 @@ const PatientList = () => {
               </label>
               <input
                 type="text"
-                name="full_name"
-                value={formData.full_name}
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
                 required
                 style={{
@@ -193,12 +195,11 @@ const PatientList = () => {
                   fontWeight: "500",
                 }}
               >
-                Email
+                Gender
               </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
+              <select
+                name="gender"
+                value={formData.gender}
                 onChange={handleChange}
                 required
                 style={{
@@ -207,7 +208,12 @@ const PatientList = () => {
                   borderRadius: "6px",
                   border: "1px solid #cbd5e1",
                 }}
-              />
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
 
             <div
@@ -225,13 +231,14 @@ const PatientList = () => {
                     fontWeight: "500",
                   }}
                 >
-                  Last Visit
+                  Date of Birth
                 </label>
                 <input
                   type="date"
-                  name="last_visit_date"
-                  value={formData.last_visit_date}
+                  name="date_of_birth"
+                  value={formData.date_of_birth}
                   onChange={handleChange}
+                  required
                   style={{
                     width: "100%",
                     padding: "10px",
@@ -248,13 +255,14 @@ const PatientList = () => {
                     fontWeight: "500",
                   }}
                 >
-                  Next Appointment
+                  Phone Number
                 </label>
                 <input
-                  type="date"
-                  name="next_appointment_date"
-                  value={formData.next_appointment_date}
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
                   onChange={handleChange}
+                  required
                   style={{
                     width: "100%",
                     padding: "10px",
@@ -263,6 +271,31 @@ const PatientList = () => {
                   }}
                 />
               </div>
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "500",
+                }}
+              >
+                Address
+              </label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                required
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
+                }}
+              />
             </div>
 
             <button
@@ -289,9 +322,9 @@ const PatientList = () => {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Email</th>
-                <th>Last Visit Date</th>
-                <th>Next Appointment</th>
+                <th>Gender</th>
+                <th>Phone</th>
+                <th>Date of Birth</th>
                 <th style={{ width: "100px" }}>Action</th>
               </tr>
             </thead>
@@ -320,23 +353,19 @@ const PatientList = () => {
                 </tr>
               ) : (
                 filteredPatients.map((patient) => (
-                  <tr key={patient.id}>
-                    <td style={{ fontWeight: "500" }}>{patient.full_name}</td>
-                    <td style={{ color: "#64748b" }}>{patient.email}</td>
+                  <tr key={patient.patient_id}>
+                    <td style={{ fontWeight: "500" }}>{patient.name}</td>
+                    <td style={{ color: "#64748b" }}>{patient.gender || "-"}</td>
+                    <td>{patient.phone || "-"}</td>
                     <td>
-                      {patient.last_visit_date
-                        ? patient.last_visit_date.split("T")[0]
+                      {patient.date_of_birth
+                        ? patient.date_of_birth.split("T")[0]
                         : "-"}
-                    </td>
-                    <td>
-                      {patient.next_appointment_date
-                        ? patient.next_appointment_date.split("T")[0]
-                        : "None"}
                     </td>
                     <td>
                       {/* DELETE BUTTON */}
                       <button
-                        onClick={() => handleDelete(patient.id)}
+                        onClick={() => handleDelete(patient.patient_id)}
                         style={{
                           backgroundColor: "#fee2e2",
                           color: "#991b1b",

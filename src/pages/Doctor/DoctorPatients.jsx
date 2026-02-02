@@ -12,9 +12,30 @@ const DoctorPatients = () => {
 
   const fetchPatients = () => {
     setLoading(true);
-    fetch("http://localhost:5001/patients")
+    
+    // Get doctor_id from localStorage
+    const userStr = localStorage.getItem("user");
+    const user = userStr ? JSON.parse(userStr) : null;
+    const doctor_id = user?.id;
+    
+    console.log("Doctor user object:", user);
+    console.log("Doctor ID:", doctor_id);
+    
+    // If no doctor_id, show empty list
+    if (!doctor_id) {
+      console.log("No doctor_id found in localStorage");
+      setPatients([]);
+      setLoading(false);
+      return;
+    }
+    
+    const url = `http://localhost:5001/doctor/${doctor_id}/patients`;
+    console.log("Fetching from URL:", url);
+    
+    fetch(url)
       .then((res) => res.json())
       .then((data) => {
+        console.log("Patients data received:", data);
         // SAFETY CHECK: Ensure data is actually an array before using it
         if (Array.isArray(data)) {
           setPatients(data);
@@ -53,7 +74,7 @@ const DoctorPatients = () => {
         : "http://localhost:5001/doctor/diagnosis";
 
     // Determine Body key ('prescription' or 'diagnosis')
-    const bodyData = { patient_name: selectedPatient.full_name };
+    const bodyData = { patient_name: selectedPatient.name };
     bodyData[activeModal] = inputText;
 
     try {
@@ -84,8 +105,8 @@ const DoctorPatients = () => {
   const filteredPatients = Array.isArray(patients)
     ? patients.filter(
         (p) =>
-          p.full_name &&
-          p.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+          p.name &&
+          p.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : [];
 
@@ -228,7 +249,7 @@ const DoctorPatients = () => {
                       color: "#111827",
                     }}
                   >
-                    {patient.full_name}
+                    {patient.name}
                   </td>
 
                   {/* PRESCRIPTION */}
@@ -312,7 +333,7 @@ const DoctorPatients = () => {
               {activeModal === "prescription" ? "Prescription" : "Diagnosis"}{" "}
               for{" "}
               <span style={{ color: "#2563eb" }}>
-                {selectedPatient.full_name}
+                {selectedPatient.name}
               </span>
             </h3>
             <textarea

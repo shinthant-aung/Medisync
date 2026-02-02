@@ -4,7 +4,7 @@ import "./Login.css";
 
 const Login = ({ onLogin }) => {
   const [role, setRole] = useState("");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -18,12 +18,12 @@ const Login = ({ onLogin }) => {
     setError("");
 
     try {
-      console.log("Sending data to backend...", { username, password, role });
+      console.log("Sending data to backend...", { email, password, role });
 
       const response = await fetch("http://localhost:5001/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, role }),
+        body: JSON.stringify({ email, password, role }),
       });
 
       const data = await response.json();
@@ -38,7 +38,7 @@ const Login = ({ onLogin }) => {
         onLogin(role);
       } else {
         // If database says "No", show the error
-        setError("Invalid Username or Password!");
+        setError("Invalid Email or Password!");
       }
     } catch (err) {
       console.error("Connection Error:", err);
@@ -97,11 +97,11 @@ const Login = ({ onLogin }) => {
               )}
 
               <div className="form-group">
-                <label>Username</label>
+                <label>Email</label>
                 <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>

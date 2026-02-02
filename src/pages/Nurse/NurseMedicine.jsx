@@ -8,10 +8,9 @@ const NurseMedicine = () => {
   // MODAL STATE
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    diagnosis_relevant: "",
-    patient_safety: "",
-    qty: "",
+    medicine_name: "",
+    stock_quantity: "",
+    expiry_date: "",
   });
 
   // 1. Fetch Medicines
@@ -38,7 +37,7 @@ const NurseMedicine = () => {
       const response = await fetch(`http://localhost:5001/medicines/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qty: newQty.toString() }),
+        body: JSON.stringify({ stock_quantity: newQty.toString() }),
       });
 
       if (response.ok) {
@@ -90,10 +89,9 @@ const NurseMedicine = () => {
         alert("✅ Medicine Added!");
         setShowModal(false);
         setFormData({
-          name: "",
-          diagnosis_relevant: "",
-          patient_safety: "",
-          qty: "",
+          medicine_name: "",
+          stock_quantity: "",
+          expiry_date: "",
         });
         fetchMedicines();
       } else {
@@ -105,7 +103,7 @@ const NurseMedicine = () => {
   };
 
   const filteredMedicines = medicines.filter((m) =>
-    m.name.toLowerCase().includes(searchTerm.toLowerCase())
+    m.medicine_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -188,16 +186,11 @@ const NurseMedicine = () => {
                 borderBottom: "1px solid #e5e7eb",
               }}
             >
-              <th style={{ padding: "15px", width: "20%" }}>Name</th>
-              <th style={{ padding: "15px", width: "25%" }}>
-                Diagnosis & Treatment Relevant
-              </th>
-              <th style={{ padding: "15px", width: "25%" }}>
-                Patient-Safety Information
-              </th>
-              <th style={{ padding: "15px", width: "20%" }}>Qty</th>
+              <th style={{ padding: "15px", width: "30%" }}>Medicine Name</th>
+              <th style={{ padding: "15px", width: "25%" }}>Stock Quantity</th>
+              <th style={{ padding: "15px", width: "25%" }}>Expiry Date</th>
               <th
-                style={{ padding: "15px", width: "10%", textAlign: "center" }}
+                style={{ padding: "15px", width: "20%", textAlign: "center" }}
               >
                 Action
               </th>
@@ -224,19 +217,11 @@ const NurseMedicine = () => {
               </tr>
             ) : (
               filteredMedicines.map((med) => (
-                <tr key={med.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                <tr key={med.medicine_id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                   <td style={{ padding: "15px", fontWeight: "600" }}>
-                    {med.name}
+                    {med.medicine_name}
                   </td>
                   <td style={{ padding: "15px", color: "#4b5563" }}>
-                    {med.diagnosis_relevant}
-                  </td>
-                  <td style={{ padding: "15px", color: "#4b5563" }}>
-                    {med.patient_safety}
-                  </td>
-
-                  {/* QTY */}
-                  <td style={{ padding: "15px" }}>
                     <div
                       style={{
                         display: "flex",
@@ -245,7 +230,7 @@ const NurseMedicine = () => {
                       }}
                     >
                       <button
-                        onClick={() => updateQty(med.id, med.qty, -1)}
+                        onClick={() => updateQty(med.medicine_id, med.stock_quantity, -1)}
                         style={qtyBtnStyle}
                       >
                         -
@@ -254,26 +239,31 @@ const NurseMedicine = () => {
                         style={{
                           fontWeight: "bold",
                           color:
-                            parseInt(med.qty) === 0 ? "#dc2626" : "#111827",
+                            parseInt(med.stock_quantity) === 0 ? "#dc2626" : "#111827",
                           minWidth: "80px",
                           textAlign: "center",
                         }}
                       >
-                        {parseInt(med.qty) === 0 ? "Out of Stock" : med.qty}
+                        {parseInt(med.stock_quantity) === 0 ? "Out of Stock" : med.stock_quantity}
                       </span>
                       <button
-                        onClick={() => updateQty(med.id, med.qty, 1)}
+                        onClick={() => updateQty(med.medicine_id, med.stock_quantity, 1)}
                         style={qtyBtnStyle}
                       >
                         +
                       </button>
                     </div>
                   </td>
+                  <td style={{ padding: "15px", color: "#4b5563" }}>
+                    {med.expiry_date
+                      ? new Date(med.expiry_date).toLocaleDateString()
+                      : "-"}
+                  </td>
 
                   {/* REMOVE BUTTON (NEW) */}
                   <td style={{ padding: "15px", textAlign: "center" }}>
                     <button
-                      onClick={() => handleRemove(med.id)}
+                      onClick={() => handleRemove(med.medicine_id)}
                       style={{
                         background: "#fee2e2",
                         color: "#dc2626",
@@ -328,35 +318,28 @@ const NurseMedicine = () => {
               style={{ display: "flex", flexDirection: "column", gap: "15px" }}
             >
               <input
-                name="name"
-                value={formData.name}
+                name="medicine_name"
+                value={formData.medicine_name}
                 onChange={handleChange}
                 required
                 style={inputStyle}
                 placeholder="Medicine Name"
               />
               <input
-                name="diagnosis_relevant"
-                value={formData.diagnosis_relevant}
-                onChange={handleChange}
-                style={inputStyle}
-                placeholder="Diagnosis Relevant"
-              />
-              <input
-                name="patient_safety"
-                value={formData.patient_safety}
-                onChange={handleChange}
-                style={inputStyle}
-                placeholder="Safety Info"
-              />
-              <input
-                name="qty"
+                name="stock_quantity"
                 type="number"
-                value={formData.qty}
+                value={formData.stock_quantity}
                 onChange={handleChange}
                 required
                 style={inputStyle}
-                placeholder="Quantity"
+                placeholder="Stock Quantity"
+              />
+              <input
+                name="expiry_date"
+                type="date"
+                value={formData.expiry_date}
+                onChange={handleChange}
+                style={inputStyle}
               />
 
               <div

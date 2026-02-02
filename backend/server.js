@@ -10,20 +10,53 @@ app.use(cors());
 app.use(express.json());
 
 // ==========================================
+// DEBUG: Test Database Connection
+// ==========================================
+app.get("/debug/test", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT 1");
+    res.json({ status: "Connected to database", result: result.rows });
+  } catch (err) {
+    console.error("Database connection error:", err.message);
+    res.status(500).json({ error: "Database connection failed", details: err.message });
+  }
+});
+
+// ==========================================
+// DEBUG: Check what's in the admin/doctor/nurse tables
+// ==========================================
+app.get("/debug/users", async (req, res) => {
+  try {
+    const admins = await pool.query("SELECT admin_id, name, email FROM admin");
+    const doctors = await pool.query("SELECT doctor_id, name, email FROM doctor");
+    const nurses = await pool.query("SELECT nurse_id, name, email FROM nurse");
+
+    res.json({
+      admins: admins.rows,
+      doctors: doctors.rows,
+      nurses: nurses.rows,
+    });
+  } catch (err) {
+    console.error("Debug error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
 // 1. GET ADMIN DASHBOARD STATS (FIXED DOCTOR COUNT)
 // ==========================================
 app.get("/admin/dashboard", async (req, res) => {
   try {
-    const patients = await pool.query("SELECT COUNT(*) FROM patients");
+    const patients = await pool.query("SELECT COUNT(*) FROM patient");
 
-    // FIX 1: Only count doctors who are 'Available'
+    // Count all doctors
     const doctors = await pool.query(
-      "SELECT COUNT(*) FROM doctors WHERE availability_status = 'Available'"
+      "SELECT COUNT(*) FROM doctor"
     );
 
-    // FIX 2: Only count nurses who are 'Available'
+    // Count all nurses
     const nurses = await pool.query(
-      "SELECT COUNT(*) FROM nurses WHERE status = 'Available'"
+      "SELECT COUNT(*) FROM nurse"
     );
 
     res.json({
@@ -38,41 +71,124 @@ app.get("/admin/dashboard", async (req, res) => {
 });
 
 // ==========================================
-// 2. LOGIN ROUTE
+// 2. LOGIN ROUTE (Using Email)
 // ==========================================
 app.post("/login", async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { email, password, role } = req.body;
 
-    const result = await pool.query(
-      "SELECT * FROM users WHERE username = $1 AND role = $2",
-      [username, role]
-    );
+    console.log(`Login attempt: email=${email}, role=${role}`);
 
-    if (result.rows.length === 0) {
-      return res
-        .status(401)
-        .json({ success: false, message: "User not found" });
-    }
+    let result;
 
-    const user = result.rows[0];
+    // Query the appropriate table based on role
+    if (role === "admin") {
+      console.log("Querying admin table...");
+      result = await pool.query(
+        "SELECT admin_id as id, name as full_name, email, password FROM admin WHERE email = $1",
+        [email]
+      );
 
-    if (password === user.password) {
-      res.json({
-        success: true,
-        user: {
-          id: user.id,
-          username: user.username,
-          full_name: user.full_name,
-          email: user.email, // Sends email to frontend
-        },
-      });
+      console.log(`Admin query result: ${result.rows.length} rows found`);
+
+      if (result.rows.length === 0) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Email not found in admin table" });
+      }
+
+      const user = result.rows[0];
+      console.log(`Admin found: ${user.full_name}`);
+
+      // Check password for admin
+      if (password === user.password) {
+        console.log("Admin password correct!");
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            full_name: user.full_name,
+            email: user.email,
+          },
+        });
+      } else {
+        console.log("Admin password incorrect!");
+        res.status(401).json({ success: false, message: "Wrong password" });
+      }
+    } else if (role === "doctor") {
+      console.log("Querying doctor table...");
+      result = await pool.query(
+        "SELECT doctor_id as id, name as full_name, email, password FROM doctor WHERE email = $1",
+        [email]
+      );
+
+      console.log(`Doctor query result: ${result.rows.length} rows found`);
+
+      if (result.rows.length === 0) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Email not found in doctor table" });
+      }
+
+      const user = result.rows[0];
+      console.log(`Doctor found: ${user.full_name}`);
+      
+      // Check password for doctor
+      if (password === user.password) {
+        console.log("Doctor password correct!");
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            full_name: user.full_name,
+            email: user.email,
+          },
+        });
+      } else {
+        console.log("Doctor password incorrect!");
+        res.status(401).json({ success: false, message: "Wrong password" });
+      }
+    } else if (role === "nurse") {
+      console.log("Querying nurse table...");
+      result = await pool.query(
+        "SELECT nurse_id as id, name as full_name, email, password FROM nurse WHERE email = $1",
+        [email]
+      );
+
+      console.log(`Nurse query result: ${result.rows.length} rows found`);
+
+      if (result.rows.length === 0) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Email not found in nurse table" });
+      }
+
+      const user = result.rows[0];
+      console.log(`Nurse found: ${user.full_name}`);
+      
+      // Check password for nurse
+      if (password === user.password) {
+        console.log("Nurse password correct!");
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            full_name: user.full_name,
+            email: user.email,
+          },
+        });
+      } else {
+        console.log("Nurse password incorrect!");
+        res.status(401).json({ success: false, message: "Wrong password" });
+      }
     } else {
-      res.status(401).json({ success: false, message: "Wrong password" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid role" });
     }
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -82,17 +198,38 @@ app.post("/login", async (req, res) => {
 app.get("/patients", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT p.*, 
-       (SELECT prescriptions FROM vitals v WHERE v.patient_name = p.full_name ORDER BY id DESC LIMIT 1) as latest_prescription,
-       (SELECT diagnosis FROM appointments a WHERE a.patient_name = p.full_name AND a.diagnosis IS NOT NULL ORDER BY appointment_date DESC LIMIT 1) as latest_diagnosis,
-       (SELECT appointment_date FROM appointments a WHERE a.patient_name = p.full_name AND a.appointment_date >= CURRENT_DATE ORDER BY appointment_date ASC LIMIT 1) as next_appointment
-      FROM patients p
-      ORDER BY p.id ASC
+      SELECT * FROM patient ORDER BY patient_id ASC
     `);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// 3.5 GET DOCTOR'S PATIENTS (Only patients assigned to specific doctor)
+// ==========================================
+app.get("/doctor/:doctor_id/patients", async (req, res) => {
+  try {
+    const { doctor_id } = req.params;
+    
+    console.log(`Fetching patients for doctor_id: ${doctor_id}`);
+    
+    // Get distinct patients who have appointments with this doctor
+    const result = await pool.query(`
+      SELECT DISTINCT p.* 
+      FROM patient p
+      INNER JOIN appointment a ON p.patient_id = a.patient_id
+      WHERE a.doctor_id = $1
+      ORDER BY p.patient_id ASC
+    `, [doctor_id]);
+    
+    console.log(`Found ${result.rows.length} patients for doctor ${doctor_id}`);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching doctor patients:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -101,11 +238,11 @@ app.get("/patients", async (req, res) => {
 // ==========================================
 app.get("/doctors", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM doctors ORDER BY id ASC");
+    const result = await pool.query("SELECT * FROM doctor ORDER BY doctor_id ASC");
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -114,11 +251,11 @@ app.get("/doctors", async (req, res) => {
 // ==========================================
 app.get("/nurses", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM nurses ORDER BY id ASC");
+    const result = await pool.query("SELECT * FROM nurse ORDER BY nurse_id ASC");
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -127,20 +264,20 @@ app.get("/nurses", async (req, res) => {
 // ==========================================
 app.post("/patients", async (req, res) => {
   try {
-    const { full_name, email, gender, date_of_birth, allergies } = req.body;
+    const { name, gender, date_of_birth, phone, address } = req.body;
 
     const newPatient = await pool.query(
-      `INSERT INTO patients 
-        (full_name, email, gender, date_of_birth, allergies, last_visit_date, next_appointment_date) 
-        VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, NULL) 
+      `INSERT INTO patient 
+        (name, gender, date_of_birth, phone, address) 
+        VALUES ($1, $2, $3, $4, $5) 
         RETURNING *`,
-      [full_name, email, gender, date_of_birth, allergies]
+      [name, gender, date_of_birth, phone, address]
     );
 
     res.json(newPatient.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -151,50 +288,57 @@ app.post("/vitals", async (req, res) => {
   try {
     const {
       patient_name,
+      blood_pressure,
+      temperature,
+      heart_rate,
       height,
       weight,
-      pulse_rate,
-      temperature,
-      blood_pressure,
       spo2,
-      prescriptions,
-      allergies,
     } = req.body;
 
-    const newRecord = await pool.query(
-      `INSERT INTO vitals 
-        (patient_name, height, weight, pulse_rate, temperature, blood_pressure, spo2, prescriptions) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [
-        patient_name,
-        height,
-        weight,
-        pulse_rate,
-        temperature,
-        blood_pressure,
-        spo2,
-        prescriptions,
-      ]
-    );
-
-    await pool.query(
-      `UPDATE appointments 
-       SET status = 'Checked In' 
-       WHERE patient_name = $1 AND status = 'Scheduled'`,
+    // Get patient_id from patient name
+    const patientResult = await pool.query(
+      "SELECT patient_id FROM patient WHERE name = $1",
       [patient_name]
     );
 
-    if (allergies && allergies.trim() !== "") {
-      await pool.query(
-        "UPDATE patients SET allergies = $1 WHERE full_name = $2",
-        [allergies, patient_name]
-      );
+    if (patientResult.rows.length === 0) {
+      return res.status(400).json({ error: "Patient not found" });
     }
+
+    const patient_id = patientResult.rows[0].patient_id;
+    
+    // Get nurse_id (using default 1 for now, TODO: Get from session/token)
+    const nurse_id = 1;
+
+    const newRecord = await pool.query(
+      `INSERT INTO vital_signs 
+        (patient_id, nurse_id, blood_pressure, temperature, heart_rate, height, weight, spo2, recorded_at) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP) RETURNING *`,
+      [
+        patient_id,
+        nurse_id,
+        blood_pressure,
+        temperature,
+        heart_rate,
+        height || null,
+        weight || null,
+        spo2 || null,
+      ]
+    );
+
+    // Update appointment status to 'Checked In'
+    await pool.query(
+      `UPDATE appointment 
+       SET status = 'Checked In' 
+       WHERE patient_id = $1 AND status = 'Scheduled'`,
+      [patient_id]
+    );
 
     res.json({ success: true, record: newRecord.rows[0] });
   } catch (err) {
     console.error("Error saving vitals:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -204,9 +348,23 @@ app.post("/vitals", async (req, res) => {
 app.get("/vitals/:patient_name", async (req, res) => {
   try {
     const { patient_name } = req.params;
-    const result = await pool.query(
-      "SELECT * FROM vitals WHERE patient_name = $1 ORDER BY id DESC LIMIT 1",
+    
+    // Get patient_id from patient name
+    const patientResult = await pool.query(
+      "SELECT patient_id FROM patient WHERE name = $1",
       [patient_name]
+    );
+    
+    if (patientResult.rows.length === 0) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    
+    const patient_id = patientResult.rows[0].patient_id;
+    
+    // Get latest vital record for the patient
+    const result = await pool.query(
+      "SELECT * FROM vital_signs WHERE patient_id = $1 ORDER BY vital_id DESC LIMIT 1",
+      [patient_id]
     );
 
     if (result.rows.length > 0) {
@@ -226,15 +384,28 @@ app.get("/vitals/:patient_name", async (req, res) => {
 app.get("/appointments", async (req, res) => {
   try {
     const { doctor_name } = req.query;
-    let query = "SELECT * FROM appointments";
+    let query = `
+      SELECT 
+        a.appointment_id,
+        a.patient_id,
+        a.doctor_id,
+        a.appointment_date,
+        a.appointment_time,
+        a.status,
+        p.name as patient_name,
+        d.name as doctor_name
+      FROM appointment a
+      LEFT JOIN patient p ON a.patient_id = p.patient_id
+      LEFT JOIN doctor d ON a.doctor_id = d.doctor_id
+    `;
     let params = [];
 
     if (doctor_name) {
-      query += " WHERE doctor_name = $1";
+      query += " WHERE d.name = $1";
       params.push(doctor_name);
     }
 
-    query += " ORDER BY appointment_date, appointment_time ASC";
+    query += " ORDER BY a.appointment_date, a.appointment_time ASC";
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
@@ -249,12 +420,12 @@ app.get("/appointments", async (req, res) => {
 app.get("/medicines", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM medicines ORDER BY name ASC"
+      "SELECT * FROM medicine ORDER BY medicine_name ASC"
     );
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -263,11 +434,9 @@ app.get("/medicines", async (req, res) => {
 // ==========================================
 app.get("/stats", async (req, res) => {
   try {
-    const pCount = await pool.query("SELECT COUNT(*) FROM patients");
-    const dCount = await pool.query(
-      "SELECT COUNT(*) FROM doctors WHERE availability_status = 'Available'"
-    );
-    const aCount = await pool.query("SELECT COUNT(*) FROM appointments");
+    const pCount = await pool.query("SELECT COUNT(*) FROM patient");
+    const dCount = await pool.query("SELECT COUNT(*) FROM doctor");
+    const aCount = await pool.query("SELECT COUNT(*) FROM appointment");
 
     res.json({
       patients: pCount.rows[0].count,
@@ -285,19 +454,17 @@ app.get("/stats", async (req, res) => {
 // ==========================================
 app.post("/doctors", async (req, res) => {
   try {
-    const { full_name, email, specialty, username, password } = req.body;
-    await pool.query(
-      "INSERT INTO users (username, password, role, full_name, email) VALUES ($1, $2, $3, $4, $5)",
-      [username, password, "doctor", full_name, email]
-    );
+    const { name, email, specialization, phone, password } = req.body;
+    const admin_id = 1; // Default admin for new doctors
+    
     const newDoctor = await pool.query(
-      "INSERT INTO doctors (full_name, email, specialty, availability_status) VALUES ($1, $2, $3, 'Available') RETURNING *",
-      [full_name, email, specialty]
+      "INSERT INTO doctor (name, email, specialization, phone, password, admin_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      [name, email, specialization, phone, password || "password", admin_id]
     );
     res.json(newDoctor.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -306,19 +473,17 @@ app.post("/doctors", async (req, res) => {
 // ==========================================
 app.post("/nurses", async (req, res) => {
   try {
-    const { full_name, email, assigned_doctor, username, password } = req.body;
-    await pool.query(
-      "INSERT INTO users (username, password, role, full_name, email) VALUES ($1, $2, $3, $4, $5)",
-      [username, password, "nurse", full_name, email]
+    const { name, email, phone, password } = req.body;
+    const admin_id = 1; // Default admin for new nurses
+    
+    const newNurse = await pool.query(
+      "INSERT INTO nurse (name, email, phone, password, admin_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [name, email, phone, password || "password", admin_id]
     );
-    await pool.query(
-      "INSERT INTO nurses (full_name, email, assigned_doctor, availability_status) VALUES ($1, $2, $3, 'Available') RETURNING *",
-      [full_name, email, assigned_doctor]
-    );
-    res.json({ message: "Nurse created successfully" });
+    res.json(newNurse.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -328,18 +493,22 @@ app.post("/nurses", async (req, res) => {
 app.delete("/doctors/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query("SELECT email FROM doctors WHERE id = $1", [
+    const result = await pool.query("SELECT email FROM doctor WHERE doctor_id = $1", [
       id,
     ]);
     if (result.rows.length > 0) {
-      const email = result.rows[0].email;
-      await pool.query("DELETE FROM users WHERE email = $1", [email]);
-      await pool.query("DELETE FROM doctors WHERE id = $1", [id]);
+      // Delete related records first (cascade delete)
+      await pool.query("DELETE FROM medical_record WHERE doctor_id = $1", [id]);
+      await pool.query("DELETE FROM appointment WHERE doctor_id = $1", [id]);
+      // Now delete the doctor
+      await pool.query("DELETE FROM doctor WHERE doctor_id = $1", [id]);
+      res.json({ success: true, message: "Doctor account deleted successfully" });
+    } else {
+      res.status(404).json({ error: "Doctor not found" });
     }
-    res.json({ message: "Doctor account deleted successfully" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -349,18 +518,21 @@ app.delete("/doctors/:id", async (req, res) => {
 app.delete("/nurses/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query("SELECT email FROM nurses WHERE id = $1", [
+    const result = await pool.query("SELECT email FROM nurse WHERE nurse_id = $1", [
       id,
     ]);
     if (result.rows.length > 0) {
-      const email = result.rows[0].email;
-      await pool.query("DELETE FROM users WHERE email = $1", [email]);
-      await pool.query("DELETE FROM nurses WHERE id = $1", [id]);
+      // Delete related vital signs records first
+      await pool.query("DELETE FROM vital_signs WHERE nurse_id = $1", [id]);
+      // Now delete the nurse
+      await pool.query("DELETE FROM nurse WHERE nurse_id = $1", [id]);
+      res.json({ success: true, message: "Nurse account deleted successfully" });
+    } else {
+      res.status(404).json({ error: "Nurse not found" });
     }
-    res.json({ message: "Nurse account deleted successfully" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -374,23 +546,50 @@ app.post("/appointments", async (req, res) => {
       doctor_name,
       appointment_date,
       appointment_time,
-      reason,
     } = req.body;
+
+    // Get patient_id from patient name
+    const patientResult = await pool.query(
+      "SELECT patient_id FROM patient WHERE name = $1",
+      [patient_name]
+    );
+
+    if (patientResult.rows.length === 0) {
+      return res.status(400).json({ error: "Patient not found" });
+    }
+
+    const patient_id = patientResult.rows[0].patient_id;
+
+    // Get doctor_id from doctor name
+    const doctorResult = await pool.query(
+      "SELECT doctor_id FROM doctor WHERE name = $1",
+      [doctor_name]
+    );
+
+    if (doctorResult.rows.length === 0) {
+      return res.status(400).json({ error: "Doctor not found" });
+    }
+
+    const doctor_id = doctorResult.rows[0].doctor_id;
+
+    // Get current admin_id (assuming it's 1 or we can get it from session)
+    const admin_id = 1; // TODO: Get from session/token
+
     const newAppt = await pool.query(
-      "INSERT INTO appointments (patient_name, doctor_name, appointment_date, appointment_time, reason, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      "INSERT INTO appointment (patient_id, doctor_id, appointment_date, appointment_time, status, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
       [
-        patient_name,
-        doctor_name,
+        patient_id,
+        doctor_id,
         appointment_date,
         appointment_time,
-        reason,
         "Scheduled",
+        admin_id,
       ]
     );
     res.json(newAppt.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -401,24 +600,24 @@ app.delete("/patients/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const patientResult = await pool.query(
-      "SELECT full_name FROM patients WHERE id = $1",
+      "SELECT name FROM patient WHERE patient_id = $1",
       [id]
     );
 
     if (patientResult.rows.length > 0) {
-      const patientName = patientResult.rows[0].full_name;
-      await pool.query("DELETE FROM appointments WHERE patient_name = $1", [
-        patientName,
-      ]);
-      await pool.query("DELETE FROM vitals WHERE patient_name = $1", [
-        patientName,
-      ]);
-      await pool.query("DELETE FROM patients WHERE id = $1", [id]);
+      // Delete related records first (cascade delete)
+      await pool.query("DELETE FROM vital_signs WHERE patient_id = $1", [id]);
+      await pool.query("DELETE FROM medical_record WHERE patient_id = $1", [id]);
+      await pool.query("DELETE FROM appointment WHERE patient_id = $1", [id]);
+      // Now delete the patient
+      await pool.query("DELETE FROM patient WHERE patient_id = $1", [id]);
+      res.json({ success: true, message: "Patient deleted successfully" });
+    } else {
+      res.status(404).json({ error: "Patient not found" });
     }
-    res.json({ message: "Patient and history deleted" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -428,14 +627,8 @@ app.delete("/patients/:id", async (req, res) => {
 app.put("/doctor/status", async (req, res) => {
   try {
     const { full_name, status } = req.body;
-    const result = await pool.query(
-      "UPDATE doctors SET availability_status = $1 WHERE full_name = $2 RETURNING *",
-      [status, full_name]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Doctor not found" });
-    }
-    res.json({ message: "Status updated", doctor: result.rows[0] });
+    // Status is not persisted in database, just return success
+    res.json({ message: "Status updated" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -448,15 +641,8 @@ app.put("/doctor/status", async (req, res) => {
 app.get("/doctor/status", async (req, res) => {
   try {
     const { full_name } = req.query;
-    const result = await pool.query(
-      "SELECT availability_status FROM doctors WHERE full_name = $1",
-      [full_name]
-    );
-    if (result.rows.length > 0) {
-      res.json({ status: result.rows[0].availability_status });
-    } else {
-      res.json({ status: "Available" });
-    }
+    // Status is not stored in database, return default
+    res.json({ status: "Available" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -469,22 +655,19 @@ app.get("/doctor/status", async (req, res) => {
 app.get("/nurse/dashboard", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT v.id, v.patient_name, v.prescriptions, 
-      COALESCE(
-        (SELECT doctor_name FROM appointments a WHERE a.patient_name = v.patient_name ORDER BY appointment_date DESC LIMIT 1),
-        'Unknown Doctor'
-      ) as doctor_name,
-      COALESCE(
-        (SELECT appointment_time FROM appointments a WHERE a.patient_name = v.patient_name ORDER BY appointment_date DESC LIMIT 1),
-        '-'
-      ) as appointment_time,
-      COALESCE(
-        (SELECT appointment_date FROM appointments a WHERE a.patient_name = v.patient_name ORDER BY appointment_date DESC LIMIT 1),
-        NULL
-      ) as appointment_date
-      FROM vitals v
-      WHERE v.prescriptions IS NOT NULL AND v.prescriptions <> ''
-      ORDER BY v.id DESC
+      SELECT 
+        mr.record_id as id,
+        p.name as patient_name,
+        mr.treatment as prescriptions,
+        d.name as doctor_name,
+        a.appointment_time,
+        a.appointment_date
+      FROM medical_record mr
+      LEFT JOIN patient p ON mr.patient_id = p.patient_id
+      LEFT JOIN doctor d ON mr.doctor_id = d.doctor_id
+      LEFT JOIN appointment a ON mr.patient_id = a.patient_id AND mr.doctor_id = a.doctor_id
+      WHERE mr.treatment IS NOT NULL AND mr.treatment <> ''
+      ORDER BY mr.record_id DESC
       LIMIT 10
     `);
     res.json(result.rows);
@@ -500,16 +683,33 @@ app.get("/nurse/dashboard", async (req, res) => {
 app.post("/doctor/prescription", async (req, res) => {
   try {
     const { patient_name, prescription } = req.body;
-    const result = await pool.query(
-      `INSERT INTO vitals (patient_name, prescriptions) 
-       VALUES ($1, $2) 
-       RETURNING *`,
-      [patient_name, prescription]
+    
+    // Get patient_id from patient name
+    const patientResult = await pool.query(
+      "SELECT patient_id FROM patient WHERE name = $1",
+      [patient_name]
     );
-    res.json({ success: true, message: "Sent to Nurse", data: result.rows[0] });
+    
+    if (patientResult.rows.length === 0) {
+      return res.status(400).json({ error: "Patient not found" });
+    }
+    
+    const patient_id = patientResult.rows[0].patient_id;
+    
+    // Get doctor_id from authenticated doctor (using default 1 for now)
+    const doctor_id = 1; // TODO: Get from session/token
+    
+    // Insert into medical_record with prescription as treatment
+    const result = await pool.query(
+      `INSERT INTO medical_record (patient_id, doctor_id, treatment, created_at) 
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP) 
+       RETURNING *`,
+      [patient_id, doctor_id, prescription]
+    );
+    res.json({ success: true, message: "Prescription added", data: result.rows[0] });
   } catch (err) {
     console.error("Error adding prescription:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -519,25 +719,34 @@ app.post("/doctor/prescription", async (req, res) => {
 app.post("/doctor/diagnosis", async (req, res) => {
   try {
     const { patient_name, diagnosis } = req.body;
-    const result = await pool.query(
-      `UPDATE appointments 
-       SET diagnosis = $1 
-       WHERE patient_name = $2 
-       AND (status = 'Scheduled' OR status = 'Checked In')
-       RETURNING *`,
-      [diagnosis, patient_name]
+    
+    // Get patient_id from patient name
+    const patientResult = await pool.query(
+      "SELECT patient_id FROM patient WHERE name = $1",
+      [patient_name]
     );
-
-    if (result.rows.length === 0) {
-      await pool.query(
-        `UPDATE appointments SET diagnosis = $1 WHERE patient_name = $2 ORDER BY appointment_date DESC LIMIT 1`,
-        [diagnosis, patient_name]
-      );
+    
+    if (patientResult.rows.length === 0) {
+      return res.status(400).json({ error: "Patient not found" });
     }
-    res.json({ success: true, message: "Diagnosis added" });
+    
+    const patient_id = patientResult.rows[0].patient_id;
+    
+    // Get doctor_id from authenticated doctor (using default 1 for now)
+    const doctor_id = 1; // TODO: Get from session/token
+    
+    // Insert into medical_record with diagnosis
+    const result = await pool.query(
+      `INSERT INTO medical_record (patient_id, doctor_id, diagnosis, created_at) 
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP) 
+       RETURNING *`,
+      [patient_id, doctor_id, diagnosis]
+    );
+    
+    res.json({ success: true, message: "Diagnosis added", data: result.rows[0] });
   } catch (err) {
     console.error("Error adding diagnosis:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -546,43 +755,43 @@ app.post("/doctor/diagnosis", async (req, res) => {
 // ==========================================
 app.post("/medicines", async (req, res) => {
   try {
-    const { name, diagnosis_relevant, patient_safety, qty } = req.body;
+    const { medicine_name, stock_quantity, expiry_date } = req.body;
     const newMed = await pool.query(
-      `INSERT INTO medicines (name, diagnosis_relevant, patient_safety, qty) 
-       VALUES ($1, $2, $3, $4) 
+      `INSERT INTO medicine (medicine_name, stock_quantity, expiry_date) 
+       VALUES ($1, $2, $3) 
        RETURNING *`,
-      [name, diagnosis_relevant, patient_safety, qty]
+      [medicine_name, stock_quantity || 0, expiry_date || null]
     );
     res.json(newMed.rows[0]);
   } catch (err) {
     console.error("Error adding medicine:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
 app.put("/medicines/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { qty } = req.body;
+    const { stock_quantity } = req.body;
     const update = await pool.query(
-      "UPDATE medicines SET qty = $1 WHERE id = $2 RETURNING *",
-      [qty, id]
+      "UPDATE medicine SET stock_quantity = $1 WHERE medicine_id = $2 RETURNING *",
+      [stock_quantity, id]
     );
     res.json(update.rows[0]);
   } catch (err) {
     console.error("Error updating quantity:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
 app.delete("/medicines/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query("DELETE FROM medicines WHERE id = $1", [id]);
+    await pool.query("DELETE FROM medicine WHERE medicine_id = $1", [id]);
     res.json({ message: "Medicine deleted successfully" });
   } catch (err) {
     console.error("Error deleting medicine:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 

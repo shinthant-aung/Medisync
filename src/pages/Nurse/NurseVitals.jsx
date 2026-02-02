@@ -2,13 +2,12 @@ import React, { useState } from "react";
 
 const NurseVitals = ({ patient, onBack }) => {
   const [vitals, setVitals] = useState({
+    blood_pressure: "",
+    temperature: "",
+    heart_rate: "",
     height: "",
     weight: "",
-    pulse_rate: "",
-    temperature: "",
-    blood_pressure: "",
     spo2: "",
-    allergies: "", // <--- Changed from prescriptions to allergies
   });
 
   const handleChange = (e) => {
@@ -85,21 +84,25 @@ const NurseVitals = ({ patient, onBack }) => {
         {/* Row 1 */}
         <div style={rowStyle}>
           <div style={groupStyle}>
-            <label style={labelStyle}>Height (cm)</label>
+            <label style={labelStyle}>Blood Pressure (mmHg)</label>
             <input
-              name="height"
-              placeholder="e.g. 175"
+              name="blood_pressure"
+              placeholder="e.g. 120/80"
               onChange={handleChange}
               style={inputStyle}
+              required
             />
           </div>
           <div style={groupStyle}>
-            <label style={labelStyle}>Weight (kg)</label>
+            <label style={labelStyle}>Temperature (°C)</label>
             <input
-              name="weight"
-              placeholder="e.g. 70"
+              name="temperature"
+              type="number"
+              step="0.1"
+              placeholder="e.g. 36.6"
               onChange={handleChange}
               style={inputStyle}
+              required
             />
           </div>
         </div>
@@ -107,19 +110,23 @@ const NurseVitals = ({ patient, onBack }) => {
         {/* Row 2 */}
         <div style={rowStyle}>
           <div style={groupStyle}>
-            <label style={labelStyle}>Pulse Rate (bpm)</label>
+            <label style={labelStyle}>Heart Rate (bpm)</label>
             <input
-              name="pulse_rate"
+              name="heart_rate"
+              type="number"
               placeholder="e.g. 80"
               onChange={handleChange}
               style={inputStyle}
+              required
             />
           </div>
           <div style={groupStyle}>
-            <label style={labelStyle}>Temperature (°C)</label>
+            <label style={labelStyle}>Height (cm)</label>
             <input
-              name="temperature"
-              placeholder="e.g. 36.6"
+              name="height"
+              type="number"
+              step="0.1"
+              placeholder="e.g. 175"
               onChange={handleChange}
               style={inputStyle}
             />
@@ -129,10 +136,12 @@ const NurseVitals = ({ patient, onBack }) => {
         {/* Row 3 */}
         <div style={rowStyle}>
           <div style={groupStyle}>
-            <label style={labelStyle}>Blood Pressure</label>
+            <label style={labelStyle}>Weight (kg)</label>
             <input
-              name="blood_pressure"
-              placeholder="e.g. 120/80"
+              name="weight"
+              type="number"
+              step="0.1"
+              placeholder="e.g. 70"
               onChange={handleChange}
               style={inputStyle}
             />
@@ -141,28 +150,12 @@ const NurseVitals = ({ patient, onBack }) => {
             <label style={labelStyle}>SPO2 (%)</label>
             <input
               name="spo2"
+              type="number"
               placeholder="e.g. 98"
               onChange={handleChange}
               style={inputStyle}
             />
           </div>
-        </div>
-
-        {/* Row 4: ALLERGIES (Replaced Prescriptions) */}
-        <div style={groupStyle}>
-          <label style={{ ...labelStyle, color: "#dc2626" }}>Allergies</label>
-          <textarea
-            name="allergies"
-            placeholder="e.g. Peanuts, Penicillin (or 'None')"
-            onChange={handleChange}
-            style={{
-              ...inputStyle,
-              height: "100px",
-              resize: "none",
-              border: "1px solid #fca5a5",
-              backgroundColor: "#fef2f2",
-            }}
-          />
         </div>
 
         {/* Submit Button */}

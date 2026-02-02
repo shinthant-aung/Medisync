@@ -109,8 +109,8 @@ const Booking = () => {
             >
               <option value="">Select a patient</option>
               {patients.map((p) => (
-                <option key={p.id} value={p.full_name}>
-                  {p.full_name}
+                <option key={p.patient_id} value={p.name}>
+                  {p.name}
                 </option>
               ))}
             </select>
@@ -141,8 +141,8 @@ const Booking = () => {
             >
               <option value="">Select a doctor</option>
               {doctors.map((d) => (
-                <option key={d.id} value={d.full_name}>
-                  {d.full_name} ({d.specialty})
+                <option key={d.doctor_id} value={d.name}>
+                  {d.name} ({d.specialization || "N/A"})
                 </option>
               ))}
             </select>

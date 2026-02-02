@@ -5,7 +5,6 @@ import "./Admin.css";
 // Import all your pages
 import AdminDashboard from "./AdminDashboard";
 import Booking from "./Booking";
-import NewPatient from "./NewPatient";
 import PatientList from "./PatientList";
 import DoctorList from "./DoctorList";
 import NurseList from "./NurseList";
@@ -40,8 +39,6 @@ const AdminLayout = ({ onLogout }) => {
         return <AdminDashboard />;
       case "booking":
         return <Booking />;
-      case "new-patient":
-        return <NewPatient />;
       case "patients":
         return <PatientList />;
       case "doctors":
@@ -73,14 +70,6 @@ const AdminLayout = ({ onLogout }) => {
               onClick={() => setActivePage("booking")}
             >
               📅 Booking
-            </div>
-            <div
-              className={`nav-item ${
-                activePage === "new-patient" ? "active" : ""
-              }`}
-              onClick={() => setActivePage("new-patient")}
-            >
-              ➕ New Patient
             </div>
             <div
               className={`nav-item ${

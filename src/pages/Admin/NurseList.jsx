@@ -7,10 +7,9 @@ const NurseList = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
-    full_name: "",
+    name: "",
     email: "",
-    assigned_doctor: "",
-    username: "",
+    phone: "",
     password: "",
   });
 
@@ -42,10 +41,9 @@ const NurseList = () => {
       });
       setShowModal(false);
       setFormData({
-        full_name: "",
+        name: "",
         email: "",
-        assigned_doctor: "",
-        username: "",
+        phone: "",
         password: "",
       });
       fetchData();
@@ -63,8 +61,8 @@ const NurseList = () => {
 
   const filteredNurses = nurses.filter(
     (nurse) =>
-      nurse.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      nurse.email.toLowerCase().includes(searchTerm.toLowerCase())
+      nurse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (nurse.email && nurse.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   // HELPER: Determine Color
@@ -171,48 +169,28 @@ const NurseList = () => {
             <tr style={{ backgroundColor: "#e2e8f0", textAlign: "left" }}>
               <th style={thStyle}>Name</th>
               <th style={thStyle}>Email</th>
-              <th style={thStyle}>Assigned Doctor</th>
-              <th style={thStyle}>Status</th>
+              <th style={thStyle}>Phone</th>
               <th style={thStyle}>Action</th>
             </tr>
           </thead>
           <tbody>
             {filteredNurses.map((nurse) => {
-              // Calculate style for this specific nurse
-              const statusStyle = getStatusStyle(nurse.status);
-
               return (
                 <tr
-                  key={nurse.id}
+                  key={nurse.nurse_id}
                   style={{ borderBottom: "1px solid #f1f5f9" }}
                 >
                   <td style={tdStyle}>
-                    <span style={{ fontWeight: "500" }}>{nurse.full_name}</span>
+                    <span style={{ fontWeight: "500" }}>{nurse.name}</span>
                   </td>
-                  <td style={tdStyle}>{nurse.email}</td>
+                  <td style={tdStyle}>{nurse.email || "-"}</td>
                   <td style={tdStyle}>
-                    {nurse.assigned_doctor || "Unassigned"}
-                  </td>
-
-                  {/* STATUS BADGE (Updated Logic) */}
-                  <td style={tdStyle}>
-                    <span
-                      style={{
-                        backgroundColor: statusStyle.bg,
-                        color: statusStyle.text,
-                        padding: "4px 12px",
-                        borderRadius: "20px",
-                        fontSize: "0.85rem",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {nurse.status || "Available"}
-                    </span>
+                    {nurse.phone || "-"}
                   </td>
 
                   <td style={tdStyle}>
                     <button
-                      onClick={() => handleRemove(nurse.id)}
+                      onClick={() => handleRemove(nurse.nurse_id)}
                       style={{
                         backgroundColor: "#fee2e2",
                         color: "#991b1b",
@@ -301,9 +279,9 @@ const NurseList = () => {
             >
               <input
                 placeholder="Full Name"
-                value={formData.full_name}
+                value={formData.name}
                 onChange={(e) =>
-                  setFormData({ ...formData, full_name: e.target.value })
+                  setFormData({ ...formData, name: e.target.value })
                 }
                 required
                 style={inputStyle}
@@ -318,35 +296,16 @@ const NurseList = () => {
                 style={inputStyle}
               />
 
-              <select
-                value={formData.assigned_doctor}
-                onChange={(e) =>
-                  setFormData({ ...formData, assigned_doctor: e.target.value })
-                }
-                style={inputStyle}
-              >
-                <option value="">Select Assigned Doctor (Optional)</option>
-                {doctors.length > 0 ? (
-                  doctors.map((doc) => (
-                    <option key={doc.id} value={doc.full_name}>
-                      {doc.full_name}{" "}
-                      {doc.specialty ? `(${doc.specialty})` : ""}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled>No doctors available</option>
-                )}
-              </select>
-
               <input
-                placeholder="Username"
-                value={formData.username}
+                placeholder="Phone Number"
+                value={formData.phone}
                 onChange={(e) =>
-                  setFormData({ ...formData, username: e.target.value })
+                  setFormData({ ...formData, phone: e.target.value })
                 }
                 required
                 style={inputStyle}
               />
+
               <input
                 type="password"
                 placeholder="Password"
@@ -372,7 +331,7 @@ const NurseList = () => {
                   cursor: "pointer",
                 }}
               >
-                Create Account
+                Create Nurse
               </button>
             </form>
           </div>
