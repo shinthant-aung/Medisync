@@ -4,6 +4,7 @@ const NurseCheckIn = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [recordedVitals, setRecordedVitals] = useState({});
 
   // MODAL STATE
   const [showModal, setShowModal] = useState(false);
@@ -20,18 +21,42 @@ const NurseCheckIn = () => {
     spo2: "",
   });
 
-  // 1. Fetch Appointments (With Filter to remove Mike Ross/Michael Brown)
-  const fetchAppointments = () => {
+  // Fetch vitals for a specific appointment
+  const fetchVitalsForAppointment = async (appointmentId) => {
+    try {
+      const response = await fetch(`http://localhost:5001/vitals?appointment_id=${appointmentId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setRecordedVitals((prev) => ({
+          ...prev,
+          [appointmentId]: data && data.vital_id ? data : null,
+        }));
+        return data && data.vital_id ? true : false;
+      }
+    } catch (err) {
+      console.error("Error fetching vitals:", err);
+    }
+    return false;
+  };
+
+  // 1. Fetch Appointments (With Filter to only show Check-in status)
+  const fetchAppointments = async () => {
     fetch("http://localhost:5001/appointments")
       .then((res) => res.json())
       .then((data) => {
-        const scheduled = data.filter(
+        const checkined = data.filter(
           (a) =>
-            a.status === "Scheduled" &&
+            a.status === "Check-in" &&
             a.patient_name !== "Mike Ross" &&
             a.patient_name !== "Michael Brown"
         );
-        setAppointments(scheduled);
+        setAppointments(checkined);
+        
+        // Fetch vitals for each appointment
+        checkined.forEach((appt) => {
+          fetchVitalsForAppointment(appt.appointment_id);
+        });
+        
         setLoading(false);
       })
       .catch((err) => console.error("Error:", err));
@@ -42,22 +67,57 @@ const NurseCheckIn = () => {
   }, []);
 
   // 2. Open Modal
-  const handleRecordClick = (appt) => {
+  const handleRecordClick = async (appt) => {
     setSelectedAppt(appt);
-    // Reset form with only the vitals we need
-    setVitals({
-      blood_pressure: "",
-      temperature: "",
-      heart_rate: "",
-      height: "",
-      weight: "",
-      spo2: "",
-    });
+    
+    // Try to load existing vitals for this specific appointment
+    try {
+      const response = await fetch(`http://localhost:5001/vitals?appointment_id=${appt.appointment_id}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Check if data is an object with vital_id (single record) or empty
+        if (data && data.vital_id) {
+          setVitals({
+            blood_pressure: data.blood_pressure || "",
+            temperature: data.temperature || "",
+            heart_rate: data.heart_rate || "",
+            height: data.height || "",
+            weight: data.weight || "",
+            spo2: data.spo2 || "",
+            recorded_at: data.recorded_at || "",
+            vital_id: data.vital_id,
+          });
+        } else {
+          setVitals({
+            blood_pressure: "",
+            temperature: "",
+            heart_rate: "",
+            height: "",
+            weight: "",
+            spo2: "",
+            recorded_at: "",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error loading vitals:", err);
+      setVitals({
+        blood_pressure: "",
+        temperature: "",
+        heart_rate: "",
+        height: "",
+        weight: "",
+        spo2: "",
+        recorded_at: "",
+      });
+    }
+    
     setShowModal(true);
   };
 
   // 3. Handle Input Change
   const handleChange = (e) => {
+    // Allow changes always
     setVitals({ ...vitals, [e.target.name]: e.target.value });
   };
 
@@ -67,22 +127,55 @@ const NurseCheckIn = () => {
     if (!selectedAppt) return;
 
     try {
-      const response = await fetch("http://localhost:5001/vitals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patient_name: selectedAppt.patient_name,
-          ...vitals,
-        }),
-      });
+      // If vitals already recorded, it's an update
+      if (recordedVitals[selectedAppt.appointment_id] && vitals.vital_id) {
+        // Update endpoint
+        const response = await fetch(`http://localhost:5001/vitals/${vitals.vital_id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            blood_pressure: vitals.blood_pressure,
+            temperature: vitals.temperature,
+            heart_rate: vitals.heart_rate,
+            height: vitals.height,
+            weight: vitals.weight,
+            spo2: vitals.spo2,
+            appointment_id: selectedAppt.appointment_id,
+          }),
+        });
 
-      if (response.ok) {
-        alert("✅ Vitals Recorded Successfully!");
-        setShowModal(false);
-        fetchAppointments(); // Refresh list
+        if (response.ok) {
+          alert("✅ Vitals Updated Successfully!");
+          setShowModal(false);
+          fetchAppointments();
+        } else {
+          alert("❌ Failed to update vitals.");
+        }
       } else {
-        const errorData = await response.json();
-        alert("❌ Failed to save: " + (errorData.error || "Unknown error"));
+        // New record
+        const response = await fetch("http://localhost:5001/vitals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            patient_name: selectedAppt.patient_name,
+            appointment_id: selectedAppt.appointment_id,
+            blood_pressure: vitals.blood_pressure,
+            temperature: vitals.temperature,
+            heart_rate: vitals.heart_rate,
+            height: vitals.height,
+            weight: vitals.weight,
+            spo2: vitals.spo2,
+          }),
+        });
+
+        if (response.ok) {
+          alert("✅ Vitals Recorded Successfully!");
+          setShowModal(false);
+          fetchAppointments(); // Refresh list
+        } else {
+          const errorData = await response.json();
+          alert("❌ Failed to save: " + (errorData.error || "Unknown error"));
+        }
       }
     } catch (err) {
       console.error("Error saving:", err);
@@ -93,6 +186,23 @@ const NurseCheckIn = () => {
   const filteredList = appointments.filter((appt) =>
     appt.patient_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Group appointments by date
+  const groupedByDate = filteredList.reduce((acc, appt) => {
+    const dateKey = appt.appointment_date 
+      ? new Date(appt.appointment_date).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "No Date";
+    
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push(appt);
+    return acc;
+  }, {});
 
   return (
     <div>
@@ -159,7 +269,6 @@ const NurseCheckIn = () => {
               <th style={{ padding: "15px" }}>Patient ↓</th>
               <th style={{ padding: "15px" }}>Doctor</th>
               <th style={{ padding: "15px" }}>Reason</th>
-              <th style={{ padding: "15px" }}>Diagnosis</th>
               <th style={{ padding: "15px", textAlign: "center" }}>Action</th>
             </tr>
           </thead>
@@ -167,16 +276,16 @@ const NurseCheckIn = () => {
             {loading ? (
               <tr>
                 <td
-                  colSpan="5"
+                  colSpan="4"
                   style={{ padding: "20px", textAlign: "center" }}
                 >
-                  No patient
+                  Loading...
                 </td>
               </tr>
             ) : filteredList.length === 0 ? (
               <tr>
                 <td
-                  colSpan="5"
+                  colSpan="4"
                   style={{
                     padding: "20px",
                     textAlign: "center",
@@ -187,46 +296,54 @@ const NurseCheckIn = () => {
                 </td>
               </tr>
             ) : (
-              filteredList.map((appt) => (
-                <tr key={appt.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "15px", fontWeight: "600" }}>
-                    {appt.patient_name}
-                  </td>
-                  <td style={{ padding: "15px", color: "#64748b" }}>
-                    {appt.doctor_name}
-                  </td>
-                  <td style={{ padding: "15px", color: "#64748b" }}>
-                    {appt.reason}
-                  </td>
-
-                  {/* DIAGNOSIS COLUMN */}
-                  <td
-                    style={{
-                      padding: "15px",
-                      color: appt.diagnosis ? "#059669" : "#94a3b8",
-                      fontWeight: appt.diagnosis ? "bold" : "normal",
-                      fontStyle: appt.diagnosis ? "normal" : "italic",
-                    }}
-                  >
-                    {appt.diagnosis || "Pending..."}
-                  </td>
-
-                  <td style={{ padding: "15px", textAlign: "center" }}>
-                    <button
-                      onClick={() => handleRecordClick(appt)}
+              Object.entries(groupedByDate).map(([dateKey, appts]) => (
+                <React.Fragment key={dateKey}>
+                  {/* Date Header Row */}
+                  <tr style={{ background: "#f3f4f6", borderTop: "2px solid #e5e7eb" }}>
+                    <td
+                      colSpan="4"
                       style={{
-                        background: "white",
-                        border: "1px solid #334155",
-                        borderRadius: "20px",
-                        padding: "6px 20px",
-                        cursor: "pointer",
-                        fontWeight: "bold",
+                        padding: "12px 15px",
+                        fontWeight: "700",
+                        color: "#374151",
+                        fontSize: "0.95rem",
                       }}
                     >
-                      Record
-                    </button>
-                  </td>
-                </tr>
+                      📅 {dateKey}
+                    </td>
+                  </tr>
+                  {/* Appointment Rows for this date */}
+                  {appts.map((appt) => (
+                    <tr key={appt.appointment_id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "15px", fontWeight: "600" }}>
+                        {appt.patient_name}
+                      </td>
+                      <td style={{ padding: "15px", color: "#64748b" }}>
+                        {appt.doctor_name}
+                      </td>
+                      <td style={{ padding: "15px", color: "#64748b" }}>
+                        {appt.reason}
+                      </td>
+
+                      <td style={{ padding: "15px", textAlign: "center" }}>
+                        <button
+                          onClick={() => handleRecordClick(appt)}
+                          style={{
+                            background: recordedVitals[appt.appointment_id] ? "#10b981" : "white",
+                            color: recordedVitals[appt.appointment_id] ? "white" : "#334155",
+                            border: `1px solid ${recordedVitals[appt.appointment_id] ? "#10b981" : "#334155"}`,
+                            borderRadius: "20px",
+                            padding: "6px 20px",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {recordedVitals[appt.appointment_id] ? "Edit" : "Record"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </React.Fragment>
               ))
             )}
           </tbody>
@@ -287,6 +404,30 @@ const NurseCheckIn = () => {
             >
               Vital Records for {selectedAppt.patient_name}
             </h1>
+
+            {recordedVitals[selectedAppt.patient_name] && (
+              <div
+                style={{
+                  background: "#f0fdf4",
+                  border: "1px solid #86efac",
+                  borderRadius: "8px",
+                  padding: "15px",
+                  marginBottom: "20px",
+                }}
+              >
+                <p style={{ margin: "0 0 10px 0", color: "#059669", fontWeight: "bold" }}>
+                  ✓ Recorded at: {vitals.recorded_at}
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", fontSize: "0.9rem", color: "#374151" }}>
+                  <div><strong>BP:</strong> {vitals.blood_pressure}</div>
+                  <div><strong>Temp:</strong> {vitals.temperature}°C</div>
+                  <div><strong>HR:</strong> {vitals.heart_rate} bpm</div>
+                  <div><strong>SPO2:</strong> {vitals.spo2}%</div>
+                  <div><strong>Height:</strong> {vitals.height} cm</div>
+                  <div><strong>Weight:</strong> {vitals.weight} kg</div>
+                </div>
+              </div>
+            )}
 
             <form
               onSubmit={handleSubmit}
@@ -386,9 +527,10 @@ const NurseCheckIn = () => {
                     cursor: "pointer",
                     color: "#000",
                     fontWeight: "400",
+                    opacity: 1,
                   }}
                 >
-                  Submit
+                  {recordedVitals[selectedAppt.patient_name] ? "Update" : "Submit"}
                 </button>
               </div>
             </form>

@@ -7,6 +7,7 @@ const NewPatient = () => {
     date_of_birth: "",
     phone: "",
     address: "",
+    allergy: "",
   });
 
   const handleChange = (e) => {
@@ -31,6 +32,7 @@ const NewPatient = () => {
           date_of_birth: "",
           phone: "",
           address: "",
+          allergy: "",
         });
       } else {
         alert("Failed to register patient");
@@ -182,7 +184,7 @@ const NewPatient = () => {
             />
           </div>
 
-          {/* Allergies */}
+          {/* Address */}
           <div>
             <label
               style={{
@@ -200,6 +202,33 @@ const NewPatient = () => {
               onChange={handleChange}
               placeholder="e.g 123 Main Street, Bangkok"
               required
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                background: "#f8fafc",
+              }}
+            />
+          </div>
+
+          {/* Allergies */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontWeight: "500",
+              }}
+            >
+              Allergies
+            </label>
+            <input
+              type="text"
+              name="allergy"
+              value={formData.allergy}
+              onChange={handleChange}
+              placeholder="e.g Penicillin, Peanuts"
               style={{
                 width: "100%",
                 padding: "12px",

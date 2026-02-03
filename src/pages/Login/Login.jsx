@@ -33,6 +33,10 @@ const Login = ({ onLogin }) => {
         // 1. Save User Info to Browser Memory
         localStorage.setItem("userFullName", data.user.full_name);
         localStorage.setItem("userEmail", data.user.email);
+        // Also save the full user object (includes `id`) for components that need it
+        localStorage.setItem("user", JSON.stringify(data.user));
+        // Save role for convenience
+        localStorage.setItem("userRole", role);
 
         // 2. Log the user in (Call this ONLY ONCE)
         onLogin(role);

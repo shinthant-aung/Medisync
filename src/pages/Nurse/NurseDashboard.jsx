@@ -67,17 +67,17 @@ const NurseDashboard = () => {
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Inter, sans-serif" }}>
+    <div style={{ padding: "30px", fontFamily: "Inter, sans-serif", backgroundColor: "#f8fafc", minHeight: "100vh" }}>
       {/* HEADER CARD */}
       <div
         style={{
           background: "white",
-          padding: "25px",
-          borderRadius: "12px",
+          padding: "30px",
+          borderRadius: "16px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "30px",
+          marginBottom: "40px",
           border: "1px solid #e2e8f0",
           boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
         }}
@@ -97,39 +97,13 @@ const NurseDashboard = () => {
             Welcome, {nurseName}.
           </p>
         </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ color: "#64748b", fontWeight: "500" }}>
-            My Status:
-          </span>
-          <select
-            value={status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "20px",
-              border: "1px solid #cbd5e1",
-              background: status === "Available" ? "#dcfce7" : "#fee2e2",
-              color: status === "Available" ? "#166534" : "#991b1b",
-
-              fontWeight: "bold",
-              cursor: "pointer",
-              outline: "none",
-              fontSize: "0.95rem",
-            }}
-          >
-            <option value="Available">🟢 Available</option>
-            <option value="Busy">🔴 Busy</option>
-            <option value="On Break">🔴 On Break</option>
-          </select>
-        </div>
       </div>
 
       <h2
         style={{
-          fontSize: "1.5rem",
+          fontSize: "1.6rem",
           fontWeight: "bold",
-          marginBottom: "20px",
+          marginBottom: "24px",
           color: "#1e293b",
         }}
       >
@@ -181,7 +155,7 @@ const NurseDashboard = () => {
                   fontWeight: "600",
                 }}
               >
-                Date
+                Appointment Date
               </th>
               <th
                 style={{
@@ -190,7 +164,7 @@ const NurseDashboard = () => {
                   fontWeight: "600",
                 }}
               >
-                Time
+                Appointment Time
               </th>
               <th
                 style={{

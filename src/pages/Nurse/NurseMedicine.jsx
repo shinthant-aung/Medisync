@@ -70,12 +70,7 @@ const NurseMedicine = () => {
     }
   };
 
-  // 4. Handle Form Input
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  // 5. Submit New Medicine
+  // 4. Submit New Medicine
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -107,303 +102,457 @@ const NurseMedicine = () => {
   );
 
   return (
-    <div>
-      {/* HEADER */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-        }}
-      >
-        <h2
-          style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#111827" }}
-        >
-          Medicine Inventory
-        </h2>
-
-        <div style={{ display: "flex", gap: "15px" }}>
-          <button
-            onClick={() => setShowModal(true)}
-            style={{
-              background: "#2563eb",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: "bold",
-            }}
-          >
-            + Add Medicine
-          </button>
-
-          <div style={{ position: "relative" }}>
-            <input
-              type="text"
-              placeholder="Search medicine..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                padding: "10px 40px 10px 15px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                width: "250px",
-                outline: "none",
-              }}
-            />
-            <span
-              style={{
-                position: "absolute",
-                right: "15px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#94a3b8",
-              }}
-            >
-              🔍
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* TABLE */}
-      <div
-        style={{
-          background: "white",
-          borderRadius: "8px",
-          border: "1px solid #e5e7eb",
-          overflow: "hidden",
-        }}
-      >
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr
-              style={{
-                background: "#d1d5db",
-                textAlign: "left",
-                borderBottom: "1px solid #e5e7eb",
-              }}
-            >
-              <th style={{ padding: "15px", width: "30%" }}>Medicine Name</th>
-              <th style={{ padding: "15px", width: "25%" }}>Stock Quantity</th>
-              <th style={{ padding: "15px", width: "25%" }}>Expiry Date</th>
-              <th
-                style={{ padding: "15px", width: "20%", textAlign: "center" }}
-              >
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td
-                  colSpan="5"
-                  style={{ textAlign: "center", padding: "30px" }}
-                >
-                  Loading...
-                </td>
-              </tr>
-            ) : filteredMedicines.length === 0 ? (
-              <tr>
-                <td
-                  colSpan="5"
-                  style={{ textAlign: "center", padding: "30px" }}
-                >
-                  No medicines found.
-                </td>
-              </tr>
-            ) : (
-              filteredMedicines.map((med) => (
-                <tr key={med.medicine_id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ padding: "15px", fontWeight: "600" }}>
-                    {med.medicine_name}
-                  </td>
-                  <td style={{ padding: "15px", color: "#4b5563" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                      }}
-                    >
-                      <button
-                        onClick={() => updateQty(med.medicine_id, med.stock_quantity, -1)}
-                        style={qtyBtnStyle}
-                      >
-                        -
-                      </button>
-                      <span
-                        style={{
-                          fontWeight: "bold",
-                          color:
-                            parseInt(med.stock_quantity) === 0 ? "#dc2626" : "#111827",
-                          minWidth: "80px",
-                          textAlign: "center",
-                        }}
-                      >
-                        {parseInt(med.stock_quantity) === 0 ? "Out of Stock" : med.stock_quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQty(med.medicine_id, med.stock_quantity, 1)}
-                        style={qtyBtnStyle}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </td>
-                  <td style={{ padding: "15px", color: "#4b5563" }}>
-                    {med.expiry_date
-                      ? new Date(med.expiry_date).toLocaleDateString()
-                      : "-"}
-                  </td>
-
-                  {/* REMOVE BUTTON (NEW) */}
-                  <td style={{ padding: "15px", textAlign: "center" }}>
-                    <button
-                      onClick={() => handleRemove(med.medicine_id)}
-                      style={{
-                        background: "#fee2e2",
-                        color: "#dc2626",
-                        border: "1px solid #fca5a5",
-                        borderRadius: "6px",
-                        padding: "8px 12px",
-                        cursor: "pointer",
-                        fontWeight: "bold",
-                        fontSize: "0.9rem",
-                      }}
-                      title="Remove Medicine"
-                    >
-                      remove
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* --- ADD MODAL --- */}
-      {showModal && (
+    <div style={{ minHeight: "100vh", background: "#f8fafc", padding: "20px" }}>
+      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+        {/* Header */}
         <div
           style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0,0,0,0.5)",
             display: "flex",
-            justifyContent: "center",
+            justifyContent: "space-between",
             alignItems: "center",
-            zIndex: 1000,
+            marginBottom: "30px",
           }}
         >
-          <div
-            style={{
-              background: "white",
-              padding: "30px",
-              borderRadius: "8px",
-              width: "500px",
-            }}
-          >
-            <h2 style={{ marginBottom: "20px", textAlign: "center" }}>
-              Add New Medicine
-            </h2>
-            <form
-              onSubmit={handleSubmit}
-              style={{ display: "flex", flexDirection: "column", gap: "15px" }}
-            >
+          <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#1e293b", margin: 0 }}>
+            Medicine Inventory
+          </h1>
+          <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
+            {/* Search Bar */}
+            <div style={{ position: "relative" }}>
               <input
-                name="medicine_name"
-                value={formData.medicine_name}
-                onChange={handleChange}
-                required
-                style={inputStyle}
-                placeholder="Medicine Name"
-              />
-              <input
-                name="stock_quantity"
-                type="number"
-                value={formData.stock_quantity}
-                onChange={handleChange}
-                required
-                style={inputStyle}
-                placeholder="Stock Quantity"
-              />
-              <input
-                name="expiry_date"
-                type="date"
-                value={formData.expiry_date}
-                onChange={handleChange}
-                style={inputStyle}
-              />
-
-              <div
+                type="text"
+                placeholder="Search medicine..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: "10px",
-                  marginTop: "10px",
+                  padding: "10px 40px 10px 15px",
+                  borderRadius: "8px",
+                  border: "1px solid #e2e8f0",
+                  fontSize: "14px",
+                  outline: "none",
+                  width: "280px",
+                }}
+              />
+              <span
+                style={{
+                  position: "absolute",
+                  right: "15px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "#94a3b8",
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  style={{
-                    padding: "10px 20px",
-                    border: "1px solid #ccc",
-                    background: "white",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: "10px 20px",
-                    background: "#2563eb",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Save
-                </button>
-              </div>
-            </form>
+                🔍
+              </span>
+            </div>
+
+            {/* Add Button */}
+            <button
+              onClick={() => setShowModal(true)}
+              style={{
+                background: "#0284c7",
+                color: "white",
+                border: "none",
+                padding: "10px 20px",
+                borderRadius: "8px",
+                fontWeight: "600",
+                fontSize: "14px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                transition: "background 0.2s",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => (e.target.style.background = "#0369a1")}
+              onMouseLeave={(e) => (e.target.style.background = "#0284c7")}
+            >
+              + Add Medicine
+            </button>
           </div>
         </div>
-      )}
+
+        {/* TABLE */}
+        <div
+          style={{
+            background: "white",
+            borderRadius: "8px",
+            border: "1px solid #e2e8f0",
+            overflow: "hidden",
+          }}
+        >
+          {filteredMedicines.length === 0 ? (
+            <div style={{ padding: "40px", textAlign: "center" }}>
+              <p style={{ color: "#94a3b8", fontSize: "15px" }}>
+                {searchTerm ? "No medicines found" : "No medicines registered yet"}
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: "14px",
+                }}
+              >
+                <thead>
+                  <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
+                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                      Medicine Name
+                    </th>
+                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                      Stock Quantity
+                    </th>
+                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                      Expiry Date
+                    </th>
+                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td
+                        colSpan="4"
+                        style={{
+                          padding: "40px",
+                          textAlign: "center",
+                          color: "#94a3b8",
+                        }}
+                      >
+                        Loading...
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredMedicines.map((med, idx) => (
+                      <tr
+                        key={med.medicine_id}
+                        style={{
+                          borderBottom: "1px solid #e2e8f0",
+                          background: idx % 2 === 0 ? "#ffffff" : "#f8fafc",
+                          transition: "background 0.2s",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = idx % 2 === 0 ? "#ffffff" : "#f8fafc")
+                        }
+                      >
+                        <td style={{ padding: "16px", color: "#1e293b", fontWeight: "500" }}>
+                          {med.medicine_name}
+                        </td>
+                        <td style={{ padding: "16px", color: "#64748b" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <button
+                              onClick={() => updateQty(med.medicine_id, med.stock_quantity, -1)}
+                              style={{
+                                background: "#e2e8f0",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "4px",
+                                width: "28px",
+                                height: "28px",
+                                cursor: "pointer",
+                                fontWeight: "bold",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              −
+                            </button>
+                            <span
+                              style={{
+                                fontWeight: "600",
+                                color:
+                                  parseInt(med.stock_quantity) === 0 ? "#dc2626" : "#1e293b",
+                                minWidth: "60px",
+                                textAlign: "center",
+                              }}
+                            >
+                              {parseInt(med.stock_quantity) === 0 ? "Out" : med.stock_quantity}
+                            </span>
+                            <button
+                              onClick={() => updateQty(med.medicine_id, med.stock_quantity, 1)}
+                              style={{
+                                background: "#e2e8f0",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "4px",
+                                width: "28px",
+                                height: "28px",
+                                cursor: "pointer",
+                                fontWeight: "bold",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                        <td style={{ padding: "16px", color: "#64748b" }}>
+                          {med.expiry_date
+                            ? new Date(med.expiry_date).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "-"}
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <button
+                            onClick={() => handleRemove(med.medicine_id)}
+                            style={{
+                              backgroundColor: "#fee2e2",
+                              color: "#dc2626",
+                              border: "1px solid #fecaca",
+                              padding: "6px 12px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "0.85rem",
+                              fontWeight: "600",
+                              transition: "background 0.2s",
+                            }}
+                            onMouseEnter={(e) => (e.target.style.backgroundColor = "#fecaca")}
+                            onMouseLeave={(e) => (e.target.style.backgroundColor = "#fee2e2")}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* MODAL */}
+        {showModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+            onClick={() => setShowModal(false)}
+          >
+            <div
+              style={{
+                background: "white",
+                padding: "30px",
+                borderRadius: "8px",
+                maxWidth: "500px",
+                width: "100%",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+                position: "relative",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* CLOSE BUTTON */}
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  position: "absolute",
+                  top: "15px",
+                  right: "15px",
+                  background: "none",
+                  border: "none",
+                  fontSize: "24px",
+                  cursor: "pointer",
+                  color: "#94a3b8",
+                  padding: "0",
+                  width: "30px",
+                  height: "30px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                ✕
+              </button>
+
+              <h3
+                style={{
+                  fontSize: "20px",
+                  fontWeight: "700",
+                  color: "#1e293b",
+                  marginBottom: "20px",
+                  marginTop: 0,
+                }}
+              >
+                Add New Medicine
+              </h3>
+
+              <form
+                onSubmit={handleSubmit}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "15px",
+                }}
+              >
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#475569",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Medicine Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter medicine name"
+                    value={formData.medicine_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, medicine_name: e.target.value })
+                    }
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "14px",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#475569",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Stock Quantity
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Enter stock quantity"
+                    value={formData.stock_quantity}
+                    onChange={(e) =>
+                      setFormData({ ...formData, stock_quantity: e.target.value })
+                    }
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "14px",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#475569",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Expiry Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.expiry_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, expiry_date: e.target.value })
+                    }
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "14px",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                  <button
+                    type="submit"
+                    style={{
+                      flex: 1,
+                      background: "#0284c7",
+                      color: "white",
+                      border: "none",
+                      padding: "10px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "600",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "background 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.target.style.background = "#0369a1")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.background = "#0284c7")
+                    }
+                  >
+                    Add Medicine
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    style={{
+                      flex: 1,
+                      background: "#f1f5f9",
+                      color: "#475569",
+                      border: "1px solid #e2e8f0",
+                      padding: "10px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "600",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      transition: "background 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#e2e8f0")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "#f1f5f9")
+                    }
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
-};
-
-// Styles
-const inputStyle = {
-  width: "100%",
-  padding: "10px",
-  borderRadius: "5px",
-  border: "1px solid #ccc",
-};
-const qtyBtnStyle = {
-  background: "#e5e7eb",
-  border: "1px solid #d1d5db",
-  borderRadius: "4px",
-  width: "30px",
-  height: "30px",
-  cursor: "pointer",
-  fontWeight: "bold",
-  fontSize: "1.2rem",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
 };
 
 export default NurseMedicine;

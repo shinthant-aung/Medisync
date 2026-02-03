@@ -56,16 +56,19 @@ const DoctorDashboard = () => {
 
     try {
       const res = await fetch(
-        `http://localhost:5001/vitals/${appointment.patient_name}`
+        `http://localhost:5001/vitals/appointment/${appointment.appointment_id}`
       );
       if (res.ok) {
         const data = await res.json();
+        console.log(`Fetched vitals for appointment ${appointment.appointment_id}:`, data); // DEBUG
         setVitals(data);
       } else {
+        console.log(`No vitals found for appointment ${appointment.appointment_id}`); // DEBUG
         setVitals(null);
       }
     } catch (err) {
       console.error("Error fetching vitals:", err);
+      setVitals(null);
     }
   };
 
@@ -90,7 +93,7 @@ const DoctorDashboard = () => {
       style={{
         padding: "30px",
         fontFamily: "Inter, sans-serif",
-        backgroundColor: "#ffffff",
+        backgroundColor: "#f8fafc",
         minHeight: "100vh",
       }}
     >
@@ -122,40 +125,13 @@ const DoctorDashboard = () => {
             Welcome, {doctorName}.
           </p>
         </div>
-
-        {/* Status Dropdown */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ color: "#64748b", fontWeight: "500" }}>
-            My Status:
-          </span>
-          <select
-            value={status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "20px",
-              border: "1px solid #cbd5e1",
-              background: status === "Available" ? "#dcfce7" : "#fee2e2",
-              color: status === "Available" ? "#166534" : "#991b1b",
-
-              fontWeight: "bold",
-              cursor: "pointer",
-              outline: "none",
-              fontSize: "0.95rem",
-            }}
-          >
-            <option value="Available">🟢 Available</option>
-            <option value="Busy">🔴 Busy</option>
-            <option value="On Break">🔴 On Break</option>
-          </select>
-        </div>
       </div>
 
       <h2
         style={{
-          fontSize: "1.5rem",
+          fontSize: "1.6rem",
           fontWeight: "bold",
-          marginBottom: "20px",
+          marginBottom: "24px",
           color: "#1e293b",
         }}
       >
@@ -340,13 +316,16 @@ const DoctorDashboard = () => {
                     <strong>BP:</strong> {vitals.blood_pressure}
                   </div>
                   <div>
-                    <strong>Pulse:</strong> {vitals.pulse_rate} bpm
+                    <strong>Heart Rate:</strong> {vitals.heart_rate} bpm
                   </div>
                   <div>
                     <strong>Temp:</strong> {vitals.temperature} °C
                   </div>
                   <div>
                     <strong>SPO2:</strong> {vitals.spo2} %
+                  </div>
+                  <div>
+                    <strong>Time:</strong> {vitals.recorded_at}
                   </div>
                 </div>
               ) : (

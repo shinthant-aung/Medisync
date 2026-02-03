@@ -5,6 +5,7 @@ const AdminDashboard = () => {
     total_patients: 0,
     active_doctors: 0,
     active_nurses: 0,
+    total_appointments: 0,
   });
 
   useEffect(() => {
@@ -16,6 +17,33 @@ const AdminDashboard = () => {
 
   return (
     <div style={{ padding: "20px", fontFamily: "Inter, sans-serif" }}>
+      {/* WELCOME SECTION */}
+      <div
+        style={{
+          backgroundColor: "white",
+          padding: "40px",
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          marginBottom: "40px",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: "1.5rem",
+            fontWeight: "bold",
+            color: "#111827",
+            marginBottom: "10px",
+          }}
+        >
+          Welcome, Administrator
+        </h2>
+        <p style={{ color: "#6b7280", fontSize: "1rem", lineHeight: "1.5" }}>
+          Use the sidebar to manage hospital records, add new staff, or update
+          patient details.
+        </p>
+      </div>
+
       <h2
         style={{
           fontSize: "1.8rem",
@@ -31,7 +59,7 @@ const AdminDashboard = () => {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
+          gridTemplateColumns: "repeat(4, 1fr)",
           gap: "24px",
           marginBottom: "40px",
         }}
@@ -60,7 +88,7 @@ const AdminDashboard = () => {
           </p>
         </div>
 
-        {/* Available Doctors (Renamed) */}
+        {/* Available Doctors */}
         <div style={cardStyle}>
           <h3
             style={{
@@ -107,32 +135,30 @@ const AdminDashboard = () => {
             {stats.active_nurses ?? 0}
           </p>
         </div>
-      </div>
 
-      {/* WELCOME SECTION */}
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "40px",
-          borderRadius: "16px",
-          border: "1px solid #e5e7eb",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "1.5rem",
-            fontWeight: "bold",
-            color: "#111827",
-            marginBottom: "10px",
-          }}
-        >
-          Welcome, Administrator
-        </h2>
-        <p style={{ color: "#6b7280", fontSize: "1rem", lineHeight: "1.5" }}>
-          Use the sidebar to manage hospital records, add new staff, or update
-          patient details.
-        </p>
+        {/* Total Appointments */}
+        <div style={cardStyle}>
+          <h3
+            style={{
+              fontSize: "0.9rem",
+              color: "#6b7280",
+              fontWeight: "600",
+              marginBottom: "8px",
+            }}
+          >
+            Total Appointments
+          </h3>
+          <p
+            style={{
+              fontSize: "3rem",
+              fontWeight: "bold",
+              color: "#dc2626",
+              margin: 0,
+            }}
+          >
+            {stats.total_appointments ?? 0}
+          </p>
+        </div>
       </div>
     </div>
   );

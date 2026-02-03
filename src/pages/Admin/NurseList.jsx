@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 
 const NurseList = () => {
   const [nurses, setNurses] = useState([]);
-  const [doctors, setDoctors] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -18,38 +20,64 @@ const NurseList = () => {
       .then((res) => res.json())
       .then((data) => setNurses(data))
       .catch((err) => console.error("Error fetching nurses:", err));
-
-    fetch("http://localhost:5001/doctors")
-      .then((res) => res.json())
-      .then((data) => setDoctors(data))
-      .catch((err) => console.error("Error fetching doctors:", err));
   };
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 3000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
-      await fetch("http://localhost:5001/nurses", {
-        method: "POST",
+      const url = editingId
+        ? `http://localhost:5001/nurses/${editingId}`
+        : "http://localhost:5001/nurses";
+      const method = editingId ? "PUT" : "POST";
+
+      await fetch(url, {
+        method: method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-      setShowModal(false);
       setFormData({
         name: "",
         email: "",
         phone: "",
         password: "",
       });
+      setEditingId(null);
+      setSuccessMessage(editingId ? "Nurse updated successfully!" : "Nurse added successfully!");
+      setTimeout(() => setSuccessMessage(""), 3000);
+      setShowModal(false);
       fetchData();
     } catch (error) {
-      console.error("Failed to add nurse", error);
+      console.error(editingId ? "Failed to update nurse" : "Failed to add nurse", error);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleEditClick = (nurse) => {
+    setEditingId(nurse.nurse_id);
+    setFormData({
+      name: nurse.name,
+      email: nurse.email || "",
+      phone: nurse.phone || "",
+      password: "",
+    });
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      password: "",
+    });
   };
 
   const handleRemove = async (id) => {
@@ -65,299 +93,411 @@ const NurseList = () => {
       (nurse.email && nurse.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // HELPER: Determine Color
-  const getStatusStyle = (status) => {
-    const currentStatus = status || "Available";
-    if (currentStatus === "Available") {
-      return { bg: "#dcfce7", text: "#166534" }; // Green
-    }
-    // Returns Red for 'Busy', 'On Break', or anything else
-    return { bg: "#fee2e2", text: "#991b1b" };
-  };
-
   return (
-    <div
-      style={{
-        padding: "30px",
-        backgroundColor: "#ffffff",
-        minHeight: "100vh",
-      }}
-    >
-      {/* HEADER */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-        }}
-      >
-        <h1
+    <div style={{ minHeight: "100vh", background: "#f8fafc", padding: "20px" }}>
+      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+        {/* Header */}
+        <div
           style={{
-            fontSize: "1.8rem",
-            fontWeight: "bold",
-            color: "#1e293b",
-            margin: 0,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "30px",
           }}
         >
-          Nurse List
-        </h1>
-        <button
-          onClick={() => setShowModal(true)}
-          style={{
-            backgroundColor: "#3b82f6",
-            color: "white",
-            padding: "10px 20px",
-            borderRadius: "6px",
-            border: "none",
-            fontWeight: "600",
-            cursor: "pointer",
-          }}
-        >
-          + Add Nurse
-        </button>
-      </div>
-
-      {/* SEARCH */}
-      <div style={{ marginBottom: "20px" }}>
-        <div style={{ position: "relative", maxWidth: "300px" }}>
-          <span
+          <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#1e293b", margin: 0 }}>
+            Nurse List
+          </h1>
+          <button
+            onClick={() => setShowModal(true)}
             style={{
-              position: "absolute",
-              left: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#64748b",
+              background: "#0284c7",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "8px",
+              fontWeight: "600",
+              fontSize: "14px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => (e.target.style.background = "#0369a1")}
+            onMouseLeave={(e) => (e.target.style.background = "#0284c7")}
+          >
+            <span>+</span> Add Nurse
+          </button>
+        </div>
+
+        {/* Success Message */}
+        {successMessage && (
+          <div
+            style={{
+              background: "#ecfdf5",
+              border: "1px solid #86efac",
+              color: "#166534",
+              padding: "12px 16px",
+              borderRadius: "8px",
+              marginBottom: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
             }}
           >
-            🔍
-          </span>
+            <span>✓</span>
+            {successMessage}
+          </div>
+        )}
+
+        {/* Search Bar */}
+        <div style={{ marginBottom: "20px" }}>
           <input
             type="text"
-            placeholder="Search nurse..."
+            placeholder="🔍 Search by name or email..."
+            className="search-input"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px 10px 10px 35px",
-              borderRadius: "6px",
-              border: "1px solid #e2e8f0",
-              backgroundColor: "#f8fafc",
-              fontSize: "0.95rem",
-              outline: "none",
-            }}
+            style={{ width: "100%", maxWidth: "400px" }}
           />
+        </div>
+
+        {/* Nurses Table */}
+        <div
+          style={{
+            background: "white",
+            borderRadius: "8px",
+            border: "1px solid #e2e8f0",
+            overflow: "hidden",
+          }}
+        >
+          {filteredNurses.length === 0 ? (
+            <div style={{ padding: "40px", textAlign: "center" }}>
+              <p style={{ color: "#94a3b8", fontSize: "15px" }}>
+                {searchTerm ? "No nurses found" : "No nurses registered yet"}
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: "14px",
+                }}
+              >
+                <thead>
+                  <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
+                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                      Name
+                    </th>
+                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                      Email
+                    </th>
+                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                      Phone
+                    </th>
+                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredNurses.map((nurse, idx) => (
+                    <tr
+                      key={nurse.nurse_id}
+                      style={{
+                        borderBottom: "1px solid #e2e8f0",
+                        background: idx % 2 === 0 ? "#ffffff" : "#f8fafc",
+                        transition: "background 0.2s",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = idx % 2 === 0 ? "#ffffff" : "#f8fafc")
+                      }
+                    >
+                      <td style={{ padding: "16px", color: "#1e293b", fontWeight: "500" }}>
+                        {nurse.name}
+                      </td>
+                      <td style={{ padding: "16px", color: "#64748b" }}>
+                        {nurse.email || "-"}
+                      </td>
+                      <td style={{ padding: "16px", color: "#64748b" }}>
+                        {nurse.phone || "-"}
+                      </td>
+                      <td style={{ padding: "16px" }}>
+                        <button
+                          onClick={() => handleEditClick(nurse)}
+                          style={{
+                            backgroundColor: "#dbeafe",
+                            color: "#1e40af",
+                            border: "none",
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                            transition: "background 0.2s",
+                            marginRight: "8px",
+                          }}
+                          onMouseEnter={(e) => (e.target.style.backgroundColor = "#bfdbfe")}
+                          onMouseLeave={(e) => (e.target.style.backgroundColor = "#dbeafe")}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleRemove(nurse.nurse_id)}
+                          style={{
+                            backgroundColor: "#fee2e2",
+                            color: "#991b1b",
+                            border: "none",
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                            transition: "background 0.2s",
+                          }}
+                          onMouseEnter={(e) => (e.target.style.backgroundColor = "#fecaca")}
+                          onMouseLeave={(e) => (e.target.style.backgroundColor = "#fee2e2")}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* TABLE */}
-      <div
-        style={{
-          borderRadius: "8px",
-          overflow: "hidden",
-          border: "1px solid #e2e8f0",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            backgroundColor: "white",
-          }}
-        >
-          <thead>
-            <tr style={{ backgroundColor: "#e2e8f0", textAlign: "left" }}>
-              <th style={thStyle}>Name</th>
-              <th style={thStyle}>Email</th>
-              <th style={thStyle}>Phone</th>
-              <th style={thStyle}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredNurses.map((nurse) => {
-              return (
-                <tr
-                  key={nurse.nurse_id}
-                  style={{ borderBottom: "1px solid #f1f5f9" }}
-                >
-                  <td style={tdStyle}>
-                    <span style={{ fontWeight: "500" }}>{nurse.name}</span>
-                  </td>
-                  <td style={tdStyle}>{nurse.email || "-"}</td>
-                  <td style={tdStyle}>
-                    {nurse.phone || "-"}
-                  </td>
-
-                  <td style={tdStyle}>
-                    <button
-                      onClick={() => handleRemove(nurse.nurse_id)}
-                      style={{
-                        backgroundColor: "#fee2e2",
-                        color: "#991b1b",
-                        border: "none",
-                        padding: "6px 12px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontWeight: "600",
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* MODAL */}
+      {/* Modal Overlay */}
       {showModal && (
         <div
           style={{
             position: "fixed",
             top: 0,
             left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "#f8fafc",
-            zIndex: 2000,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
             display: "flex",
-            flexDirection: "column",
-            padding: "40px",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
           }}
+          onClick={() => setShowModal(false)}
         >
+          {/* Modal Card */}
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              maxWidth: "600px",
-              width: "100%",
-              margin: "0 auto 20px auto",
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "1.8rem",
-                fontWeight: "bold",
-                color: "#1e293b",
-                margin: 0,
-              }}
-            >
-              Add New Nurse
-            </h2>
-            <button
-              onClick={() => setShowModal(false)}
-              style={{
-                backgroundColor: "#64748b",
-                color: "white",
-                border: "none",
-                padding: "8px 16px",
-                borderRadius: "6px",
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-
-          <div
-            style={{
-              backgroundColor: "white",
-              padding: "40px",
+              background: "white",
               borderRadius: "12px",
-              width: "100%",
-              maxWidth: "600px",
-              margin: "0 auto",
-              border: "1px solid #e2e8f0",
+              padding: "32px",
+              maxWidth: "500px",
+              width: "90%",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 25px rgba(0, 0, 0, 0.15)",
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <form
-              onSubmit={handleSubmit}
-              style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+            {/* Close Button */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "24px",
+              }}
             >
-              <input
-                placeholder="Full Name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                required
-                style={inputStyle}
-              />
-              <input
-                placeholder="Email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                required
-                style={inputStyle}
-              />
-
-              <input
-                placeholder="Phone Number"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                required
-                style={inputStyle}
-              />
-
-              <input
-                type="password"
-                placeholder="Password"
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-                required
-                style={inputStyle}
-              />
-
+              <h2 style={{ fontSize: "20px", fontWeight: "700", color: "#1e293b", margin: 0 }}>
+                {editingId ? "Edit Nurse" : "Add Nurse"}
+              </h2>
               <button
-                type="submit"
+                onClick={() => handleCloseModal()}
                 style={{
-                  marginTop: "10px",
-                  width: "100%",
-                  padding: "12px",
-                  backgroundColor: "white",
-                  color: "black",
-                  border: "1px solid #000",
-                  borderRadius: "6px",
-                  fontWeight: "600",
+                  background: "none",
+                  border: "none",
+                  fontSize: "24px",
                   cursor: "pointer",
+                  color: "#94a3b8",
                 }}
               >
-                Create Nurse
+                ✕
               </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ display: "grid", gap: "18px" }}>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: "600",
+                    color: "#334155",
+                    fontSize: "13px",
+                  }}
+                >
+                  Full Name <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: "600",
+                    color: "#334155",
+                    fontSize: "13px",
+                  }}
+                >
+                  Email <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: "600",
+                    color: "#334155",
+                    fontSize: "13px",
+                  }}
+                >
+                  Phone <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: "600",
+                    color: "#334155",
+                    fontSize: "13px",
+                  }}
+                >
+                  Password <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "24px" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  style={{
+                    padding: "10px 16px",
+                    background: "#f1f5f9",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    color: "#334155",
+                    transition: "background 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.target.style.background = "#e2e8f0")}
+                  onMouseLeave={(e) => (e.target.style.background = "#f1f5f9")}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  style={{
+                    padding: "10px 16px",
+                    background: isSubmitting ? "#94a3b8" : "#0284c7",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    cursor: isSubmitting ? "not-allowed" : "pointer",
+                    transition: "background 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    !isSubmitting && (e.target.style.background = "#0369a1")
+                  }
+                  onMouseLeave={(e) =>
+                    !isSubmitting && (e.target.style.background = "#0284c7")
+                  }
+                >
+                  {isSubmitting
+                    ? editingId
+                      ? "Updating..."
+                      : "Creating..."
+                    : editingId
+                    ? "Update Nurse"
+                    : "Create Nurse"}
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
     </div>
   );
-};
-
-// Styles
-const thStyle = {
-  padding: "15px 20px",
-  fontSize: "0.85rem",
-  fontWeight: "600",
-  color: "#475569",
-  borderBottom: "1px solid #e2e8f0",
-};
-const tdStyle = { padding: "15px 20px", fontSize: "0.95rem", color: "#334155" };
-const inputStyle = {
-  width: "100%",
-  padding: "12px 15px",
-  borderRadius: "6px",
-  border: "1px solid #e2e8f0",
-  backgroundColor: "#f8fafc",
-  outline: "none",
-  fontSize: "0.95rem",
 };
 
 export default NurseList;

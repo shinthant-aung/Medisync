@@ -59,10 +59,16 @@ app.get("/admin/dashboard", async (req, res) => {
       "SELECT COUNT(*) FROM nurse"
     );
 
+    // Count only scheduled appointments (not checked-in or cancelled)
+    const appointments = await pool.query(
+      "SELECT COUNT(*) FROM appointment WHERE status = 'Scheduled'"
+    );
+
     res.json({
       total_patients: parseInt(patients.rows[0].count, 10) || 0,
       active_doctors: parseInt(doctors.rows[0].count, 10) || 0,
       active_nurses: parseInt(nurses.rows[0].count, 10) || 0,
+      total_appointments: parseInt(appointments.rows[0].count, 10) || 0,
     });
   } catch (err) {
     console.error(err.message);
@@ -207,6 +213,25 @@ app.get("/patients", async (req, res) => {
   }
 });
 
+// GET SINGLE PATIENT BY ID
+app.get("/patients/:patient_id", async (req, res) => {
+  try {
+    const { patient_id } = req.params;
+    const result = await pool.query(`
+      SELECT * FROM patient WHERE patient_id = $1
+    `, [patient_id]);
+    
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: "Patient not found" });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
 // ==========================================
 // 3.5 GET DOCTOR'S PATIENTS (Only patients assigned to specific doctor)
 // ==========================================
@@ -264,14 +289,14 @@ app.get("/nurses", async (req, res) => {
 // ==========================================
 app.post("/patients", async (req, res) => {
   try {
-    const { name, gender, date_of_birth, phone, address } = req.body;
+    const { name, gender, date_of_birth, phone, address, allergy } = req.body;
 
     const newPatient = await pool.query(
       `INSERT INTO patient 
-        (name, gender, date_of_birth, phone, address) 
-        VALUES ($1, $2, $3, $4, $5) 
+        (name, gender, date_of_birth, phone, address, allergy) 
+        VALUES ($1, $2, $3, $4, $5, $6) 
         RETURNING *`,
-      [name, gender, date_of_birth, phone, address]
+      [name, gender, date_of_birth, phone, address, allergy]
     );
 
     res.json(newPatient.rows[0]);
@@ -282,12 +307,134 @@ app.post("/patients", async (req, res) => {
 });
 
 // ==========================================
+// UPDATE PATIENT
+// ==========================================
+app.put("/patients/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, gender, date_of_birth, phone, address, allergy } = req.body;
+
+    const updatedPatient = await pool.query(
+      `UPDATE patient 
+        SET name = $1, gender = $2, date_of_birth = $3, phone = $4, address = $5, allergy = $6 
+        WHERE patient_id = $7 
+        RETURNING *`,
+      [name, gender, date_of_birth, phone, address, allergy, id]
+    );
+
+    if (updatedPatient.rows.length === 0) {
+      return res.status(404).json({ error: "Patient not found" });
+    }
+
+    res.json(updatedPatient.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// GET PATIENT'S APPOINTMENTS FOR HISTORY
+// ==========================================
+app.get("/patients/:patient_id/appointments", async (req, res) => {
+  try {
+    const { patient_id } = req.params;
+    const result = await pool.query(
+      `SELECT a.appointment_id, a.appointment_date, a.appointment_time, 
+              a.reason, a.status, a.doctor_id, d.name as doctor_name
+       FROM appointment a
+       LEFT JOIN doctor d ON a.doctor_id = d.doctor_id
+       WHERE a.patient_id = $1
+       ORDER BY a.appointment_date DESC`,
+      [patient_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// GET PATIENT'S VITAL SIGNS FOR HISTORY
+// ==========================================
+app.get("/patients/:patient_id/vitals", async (req, res) => {
+  try {
+    const { patient_id } = req.params;
+    const result = await pool.query(
+      `SELECT v.vital_id, 
+              DATE(v.recorded_at) as recorded_date,
+              TO_CHAR(v.recorded_at, 'HH24:MI:SS') as recorded_time,
+              v.temperature, v.blood_pressure, v.heart_rate, v.SPO2 as oxygen_level
+       FROM vital_signs v
+       WHERE v.patient_id = $1
+       ORDER BY v.recorded_at DESC`,
+      [patient_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// GET PATIENT'S MEDICAL RECORDS (DIAGNOSES & PRESCRIPTIONS)
+// ==========================================
+app.get("/patients/:patient_id/medical-records", async (req, res) => {
+  try {
+    const { patient_id } = req.params;
+    
+    // Fetch diagnoses from medical_record
+    const diagnosesResult = await pool.query(
+      `SELECT m.record_id, m.diagnosis as disease_name, m.created_date as date_recorded,
+              m.appointment_id, d.name as doctor_name, a.appointment_date, a.appointment_time
+       FROM medical_record m
+       LEFT JOIN doctor d ON m.doctor_id = d.doctor_id
+       LEFT JOIN appointment a ON m.appointment_id = a.appointment_id
+       WHERE m.patient_id = $1
+       ORDER BY m.created_date DESC`,
+      [patient_id]
+    );
+
+    // Fetch prescriptions with appointment details
+    const prescriptionsResult = await pool.query(
+      `SELECT DISTINCT ON (p.prescription_id) p.prescription_id, p.treatment as medicine_name, p.dosage, 
+              p.created_at as date_prescribed, p.appointment_id, p.patient_id, p.doctor_id,
+              d.name as doctor_name, 
+              a.appointment_date, a.appointment_time, a.appointment_id as appointment_id_from_appt
+       FROM prescription p
+       LEFT JOIN doctor d ON p.doctor_id = d.doctor_id
+       LEFT JOIN appointment a ON (
+         p.appointment_id = a.appointment_id 
+         OR (p.appointment_id IS NULL AND p.patient_id = a.patient_id AND p.doctor_id = a.doctor_id)
+       )
+       WHERE p.patient_id = $1
+       ORDER BY p.prescription_id, a.appointment_date DESC NULLS LAST
+       LIMIT (SELECT COUNT(*) FROM prescription WHERE patient_id = $1)`,
+      [patient_id]
+    );
+
+    res.json({
+      diagnoses: diagnosesResult.rows,
+      prescriptions: prescriptionsResult.rows,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+
+// ==========================================
 // 7. RECORD VITALS
 // ==========================================
 app.post("/vitals", async (req, res) => {
   try {
     const {
       patient_name,
+      doctor_id,
+      appointment_id,
       blood_pressure,
       temperature,
       heart_rate,
@@ -307,17 +454,16 @@ app.post("/vitals", async (req, res) => {
     }
 
     const patient_id = patientResult.rows[0].patient_id;
-    
-    // Get nurse_id (using default 1 for now, TODO: Get from session/token)
-    const nurse_id = 1;
 
     const newRecord = await pool.query(
       `INSERT INTO vital_signs 
-        (patient_id, nurse_id, blood_pressure, temperature, heart_rate, height, weight, spo2, recorded_at) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP) RETURNING *`,
+        (patient_id, doctor_id, appointment_id, blood_pressure, temperature, heart_rate, height, weight, SPO2, recorded_at) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP) 
+        RETURNING vital_id, patient_id, doctor_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, SPO2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at`,
       [
         patient_id,
-        nurse_id,
+        doctor_id || null,
+        appointment_id || null,
         blood_pressure,
         temperature,
         heart_rate,
@@ -327,13 +473,15 @@ app.post("/vitals", async (req, res) => {
       ]
     );
 
-    // Update appointment status to 'Checked In'
-    await pool.query(
-      `UPDATE appointment 
-       SET status = 'Checked In' 
-       WHERE patient_id = $1 AND status = 'Scheduled'`,
-      [patient_id]
-    );
+    // Update appointment status to 'Check-in'
+    if (appointment_id) {
+      await pool.query(
+        `UPDATE appointment 
+         SET status = 'Check-in' 
+         WHERE appointment_id = $1`,
+        [appointment_id]
+      );
+    }
 
     res.json({ success: true, record: newRecord.rows[0] });
   } catch (err) {
@@ -343,11 +491,67 @@ app.post("/vitals", async (req, res) => {
 });
 
 // ==========================================
+// 7.4 GET VITALS BY APPOINTMENT ID (supports both path and query params)
+// ==========================================
+app.get("/vitals", async (req, res) => {
+  try {
+    const { appointment_id } = req.query;
+    
+    if (!appointment_id) {
+      return res.status(400).json({ error: "appointment_id is required" });
+    }
+    
+    console.log("Fetching vitals for appointment:", appointment_id);
+    
+    // Get vital record for this appointment
+    const result = await pool.query(
+      `SELECT vital_id, patient_id, doctor_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, recorded_at FROM vital_signs WHERE appointment_id = $1 LIMIT 1`,
+      [appointment_id]
+    );
+
+    console.log("Vitals result:", result.rows);
+
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.json(null);
+    }
+  } catch (err) {
+    console.error("Error fetching vitals:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+app.get("/vitals/appointment/:appointment_id", async (req, res) => {
+  try {
+    const { appointment_id } = req.params;
+    console.log("Fetching vitals for appointment:", appointment_id);
+    
+    // Get vital record for this appointment
+    const result = await pool.query(
+      `SELECT vital_id, patient_id, doctor_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at FROM vital_signs WHERE appointment_id = $1 LIMIT 1`,
+      [appointment_id]
+    );
+
+    console.log("Vitals result:", result.rows);
+
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ message: "No vitals found for this appointment" });
+    }
+  } catch (err) {
+    console.error("Error fetching vitals:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
 // 7.5 GET VITALS FOR A PATIENT
 // ==========================================
 app.get("/vitals/:patient_name", async (req, res) => {
   try {
     const { patient_name } = req.params;
+    console.log("Fetching vitals for patient:", patient_name); // DEBUG
     
     // Get patient_id from patient name
     const patientResult = await pool.query(
@@ -355,17 +559,22 @@ app.get("/vitals/:patient_name", async (req, res) => {
       [patient_name]
     );
     
+    console.log("Patient lookup result:", patientResult.rows); // DEBUG
+    
     if (patientResult.rows.length === 0) {
       return res.status(404).json({ message: "Patient not found" });
     }
     
     const patient_id = patientResult.rows[0].patient_id;
+    console.log("Patient ID:", patient_id); // DEBUG
     
     // Get latest vital record for the patient
     const result = await pool.query(
-      "SELECT * FROM vital_signs WHERE patient_id = $1 ORDER BY vital_id DESC LIMIT 1",
+      `SELECT vital_id, patient_id, doctor_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at FROM vital_signs WHERE patient_id = $1 ORDER BY vital_id DESC LIMIT 1`,
       [patient_id]
     );
+
+    console.log("Vitals result:", result.rows); // DEBUG
 
     if (result.rows.length > 0) {
       res.json(result.rows[0]);
@@ -375,6 +584,52 @@ app.get("/vitals/:patient_name", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ==========================================
+// 7.6 UPDATE VITALS FOR A PATIENT
+// ==========================================
+app.put("/vitals/:vital_id", async (req, res) => {
+  try {
+    const { vital_id } = req.params;
+    const {
+      blood_pressure,
+      temperature,
+      heart_rate,
+      height,
+      weight,
+      spo2,
+      doctor_id,
+      appointment_id,
+    } = req.body;
+
+    const result = await pool.query(
+      `UPDATE vital_signs 
+       SET blood_pressure = $1, temperature = $2, heart_rate = $3, height = $4, weight = $5, SPO2 = $6, doctor_id = $7, appointment_id = $8
+       WHERE vital_id = $9
+       RETURNING vital_id, patient_id, doctor_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, SPO2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at`,
+      [
+        blood_pressure,
+        temperature,
+        heart_rate,
+        height || null,
+        weight || null,
+        spo2 || null,
+        doctor_id || null,
+        appointment_id || null,
+        vital_id,
+      ]
+    );
+
+    if (result.rows.length > 0) {
+      res.json({ success: true, record: result.rows[0] });
+    } else {
+      res.status(404).json({ message: "Vital record not found" });
+    }
+  } catch (err) {
+    console.error("Error updating vitals:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -391,8 +646,10 @@ app.get("/appointments", async (req, res) => {
         a.doctor_id,
         a.appointment_date,
         a.appointment_time,
+        a.reason,
         a.status,
         p.name as patient_name,
+        p.allergy,
         d.name as doctor_name
       FROM appointment a
       LEFT JOIN patient p ON a.patient_id = p.patient_id
@@ -405,12 +662,71 @@ app.get("/appointments", async (req, res) => {
       params.push(doctor_name);
     }
 
-    query += " ORDER BY a.appointment_date, a.appointment_time ASC";
+    query += " ORDER BY a.appointment_date DESC, a.appointment_time DESC";
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ==========================================
+// 8A. GET APPOINTMENT BY PATIENT ID
+// ==========================================
+app.get("/appointments/:patient_id", async (req, res) => {
+  try {
+    const { patient_id } = req.params;
+    console.log("Fetching appointment for patient_id:", patient_id); // DEBUG
+    const result = await pool.query(
+      `SELECT appointment_id, patient_id, doctor_id, appointment_date, appointment_time, reason, status
+       FROM appointment
+       WHERE patient_id = $1
+       ORDER BY appointment_date DESC
+       LIMIT 1`,
+      [patient_id]
+    );
+    
+    console.log("Appointment query result:", result.rows); // DEBUG
+    
+    if (result.rows.length === 0) {
+      console.log("No appointment found for patient_id:", patient_id); // DEBUG
+      res.json(null);
+    } else {
+      console.log("Returning appointment:", result.rows[0]); // DEBUG
+      res.json(result.rows[0]);
+    }
+  } catch (err) {
+    console.error("Error fetching appointment:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// 8. UPDATE APPOINTMENT STATUS
+// ==========================================
+app.put("/appointments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["Scheduled", "Check-in", "Cancelled"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const result = await pool.query(
+      "UPDATE appointment SET status = $1 WHERE appointment_id = $2 RETURNING *",
+      [status, id]
+    );
+
+    if (result.rows.length > 0) {
+      res.json({ success: true, appointment: result.rows[0] });
+    } else {
+      res.status(404).json({ error: "Appointment not found" });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -455,13 +771,36 @@ app.get("/stats", async (req, res) => {
 app.post("/doctors", async (req, res) => {
   try {
     const { name, email, specialization, phone, password } = req.body;
-    const admin_id = 1; // Default admin for new doctors
     
     const newDoctor = await pool.query(
-      "INSERT INTO doctor (name, email, specialization, phone, password, admin_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [name, email, specialization, phone, password || "password", admin_id]
+      "INSERT INTO doctor (name, email, specialization, phone, password) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [name, email, specialization, phone, password || "password"]
     );
     res.json(newDoctor.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// UPDATE DOCTOR
+// ==========================================
+app.put("/doctors/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, specialization, phone, password } = req.body;
+    
+    const updatedDoctor = await pool.query(
+      "UPDATE doctor SET name = $1, email = $2, specialization = $3, phone = $4, password = COALESCE(NULLIF($5, ''), password) WHERE doctor_id = $6 RETURNING *",
+      [name, email, specialization, phone, password, id]
+    );
+    
+    if (updatedDoctor.rows.length === 0) {
+      return res.status(404).json({ error: "Doctor not found" });
+    }
+    
+    res.json(updatedDoctor.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error", details: err.message });
@@ -474,13 +813,36 @@ app.post("/doctors", async (req, res) => {
 app.post("/nurses", async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
-    const admin_id = 1; // Default admin for new nurses
     
     const newNurse = await pool.query(
-      "INSERT INTO nurse (name, email, phone, password, admin_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [name, email, phone, password || "password", admin_id]
+      "INSERT INTO nurse (name, email, phone, password) VALUES ($1, $2, $3, $4) RETURNING *",
+      [name, email, phone, password || "password"]
     );
     res.json(newNurse.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// 12B. UPDATE NURSE
+// ==========================================
+app.put("/nurses/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, password } = req.body;
+    
+    const updatedNurse = await pool.query(
+      "UPDATE nurse SET name = $1, email = $2, phone = $3, password = COALESCE(NULLIF($4, ''), password) WHERE nurse_id = $5 RETURNING *",
+      [name, email, phone, password, id]
+    );
+    
+    if (updatedNurse.rows.length === 0) {
+      return res.status(404).json({ error: "Nurse not found" });
+    }
+    
+    res.json(updatedNurse.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error", details: err.message });
@@ -498,6 +860,7 @@ app.delete("/doctors/:id", async (req, res) => {
     ]);
     if (result.rows.length > 0) {
       // Delete related records first (cascade delete)
+      await pool.query("DELETE FROM prescription WHERE doctor_id = $1", [id]);
       await pool.query("DELETE FROM medical_record WHERE doctor_id = $1", [id]);
       await pool.query("DELETE FROM appointment WHERE doctor_id = $1", [id]);
       // Now delete the doctor
@@ -546,6 +909,7 @@ app.post("/appointments", async (req, res) => {
       doctor_name,
       appointment_date,
       appointment_time,
+      reason,
     } = req.body;
 
     // Get patient_id from patient name
@@ -572,21 +936,72 @@ app.post("/appointments", async (req, res) => {
 
     const doctor_id = doctorResult.rows[0].doctor_id;
 
-    // Get current admin_id (assuming it's 1 or we can get it from session)
-    const admin_id = 1; // TODO: Get from session/token
-
     const newAppt = await pool.query(
-      "INSERT INTO appointment (patient_id, doctor_id, appointment_date, appointment_time, status, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      "INSERT INTO appointment (patient_id, doctor_id, appointment_date, appointment_time, reason, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
       [
         patient_id,
         doctor_id,
         appointment_date,
         appointment_time,
+        reason,
         "Scheduled",
-        admin_id,
       ]
     );
     res.json(newAppt.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// UPDATE APPOINTMENT
+// ==========================================
+app.put("/appointments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      patient_name,
+      doctor_name,
+      appointment_date,
+      appointment_time,
+      reason,
+    } = req.body;
+
+    // Get patient_id from patient name
+    const patientResult = await pool.query(
+      "SELECT patient_id FROM patient WHERE name = $1",
+      [patient_name]
+    );
+
+    if (patientResult.rows.length === 0) {
+      return res.status(400).json({ error: "Patient not found" });
+    }
+
+    const patient_id = patientResult.rows[0].patient_id;
+
+    // Get doctor_id from doctor name
+    const doctorResult = await pool.query(
+      "SELECT doctor_id FROM doctor WHERE name = $1",
+      [doctor_name]
+    );
+
+    if (doctorResult.rows.length === 0) {
+      return res.status(400).json({ error: "Doctor not found" });
+    }
+
+    const doctor_id = doctorResult.rows[0].doctor_id;
+
+    const updatedAppt = await pool.query(
+      "UPDATE appointment SET patient_id = $1, doctor_id = $2, appointment_date = $3, appointment_time = $4, reason = $5 WHERE appointment_id = $6 RETURNING *",
+      [patient_id, doctor_id, appointment_date, appointment_time, reason, id]
+    );
+
+    if (updatedAppt.rows.length === 0) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+
+    res.json(updatedAppt.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error", details: err.message });
@@ -606,6 +1021,7 @@ app.delete("/patients/:id", async (req, res) => {
 
     if (patientResult.rows.length > 0) {
       // Delete related records first (cascade delete)
+      await pool.query("DELETE FROM prescription WHERE patient_id = $1", [id]);
       await pool.query("DELETE FROM vital_signs WHERE patient_id = $1", [id]);
       await pool.query("DELETE FROM medical_record WHERE patient_id = $1", [id]);
       await pool.query("DELETE FROM appointment WHERE patient_id = $1", [id]);
@@ -656,18 +1072,18 @@ app.get("/nurse/dashboard", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        mr.record_id as id,
-        p.name as patient_name,
-        mr.treatment as prescriptions,
-        d.name as doctor_name,
-        a.appointment_time,
-        a.appointment_date
-      FROM medical_record mr
-      LEFT JOIN patient p ON mr.patient_id = p.patient_id
-      LEFT JOIN doctor d ON mr.doctor_id = d.doctor_id
-      LEFT JOIN appointment a ON mr.patient_id = a.patient_id AND mr.doctor_id = a.doctor_id
-      WHERE mr.treatment IS NOT NULL AND mr.treatment <> ''
-      ORDER BY mr.record_id DESC
+        pr.prescription_id as id,
+        COALESCE(p.name, 'N/A') as patient_name,
+        pr.treatment as prescriptions,
+        COALESCE(d.name, 'N/A') as doctor_name,
+        COALESCE(a.appointment_date::VARCHAR, pr.created_at::DATE::VARCHAR) as appointment_date,
+        COALESCE(TO_CHAR(a.appointment_time, 'HH24:MI:SS'), TO_CHAR(pr.created_at, 'HH24:MI:SS')) as appointment_time
+      FROM prescription pr
+      LEFT JOIN patient p ON pr.patient_id = p.patient_id
+      LEFT JOIN doctor d ON pr.doctor_id = d.doctor_id
+      LEFT JOIN appointment a ON pr.appointment_id = a.appointment_id
+      WHERE pr.treatment IS NOT NULL AND pr.treatment <> ''
+      ORDER BY pr.prescription_id DESC
       LIMIT 10
     `);
     res.json(result.rows);
@@ -682,7 +1098,7 @@ app.get("/nurse/dashboard", async (req, res) => {
 // ==========================================
 app.post("/doctor/prescription", async (req, res) => {
   try {
-    const { patient_name, prescription } = req.body;
+    const { patient_name, prescription, doctor_id, appointment_id } = req.body;
     
     // Get patient_id from patient name
     const patientResult = await pool.query(
@@ -696,15 +1112,15 @@ app.post("/doctor/prescription", async (req, res) => {
     
     const patient_id = patientResult.rows[0].patient_id;
     
-    // Get doctor_id from authenticated doctor (using default 1 for now)
-    const doctor_id = 1; // TODO: Get from session/token
+    // Use doctor_id from request (sent by frontend)
+    if (!doctor_id) {
+      return res.status(400).json({ error: "Doctor ID missing" });
+    }
     
-    // Insert into medical_record with prescription as treatment
+    // Insert into prescription table with patient_id, doctor_id, and appointment_id
     const result = await pool.query(
-      `INSERT INTO medical_record (patient_id, doctor_id, treatment, created_at) 
-       VALUES ($1, $2, $3, CURRENT_TIMESTAMP) 
-       RETURNING *`,
-      [patient_id, doctor_id, prescription]
+      `INSERT INTO prescription (treatment, dosage, patient_id, doctor_id, appointment_id, created_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING *`,
+      [prescription, null, patient_id, doctor_id, appointment_id || null]
     );
     res.json({ success: true, message: "Prescription added", data: result.rows[0] });
   } catch (err) {
@@ -714,11 +1130,39 @@ app.post("/doctor/prescription", async (req, res) => {
 });
 
 // ==========================================
+// 20.5 UPDATE PRESCRIPTION
+// ==========================================
+app.put("/doctor/prescription/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { prescription } = req.body;
+
+    if (!prescription) {
+      return res.status(400).json({ error: "Prescription text required" });
+    }
+
+    const result = await pool.query(
+      `UPDATE prescription SET treatment = $1 WHERE prescription_id = $2 RETURNING *`,
+      [prescription, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Prescription not found" });
+    }
+
+    res.json({ success: true, message: "Prescription updated", data: result.rows[0] });
+  } catch (err) {
+    console.error("Error updating prescription:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
 // 21. DOCTOR ADD DIAGNOSIS
 // ==========================================
 app.post("/doctor/diagnosis", async (req, res) => {
   try {
-    const { patient_name, diagnosis } = req.body;
+    const { patient_name, diagnosis, doctor_id, appointment_id } = req.body;
     
     // Get patient_id from patient name
     const patientResult = await pool.query(
@@ -732,20 +1176,96 @@ app.post("/doctor/diagnosis", async (req, res) => {
     
     const patient_id = patientResult.rows[0].patient_id;
     
-    // Get doctor_id from authenticated doctor (using default 1 for now)
-    const doctor_id = 1; // TODO: Get from session/token
+    // Use doctor_id from request (sent by frontend)
+    if (!doctor_id) {
+      return res.status(400).json({ error: "Doctor ID missing" });
+    }
     
-    // Insert into medical_record with diagnosis
+    // Insert into medical_record with diagnosis and appointment_id
     const result = await pool.query(
-      `INSERT INTO medical_record (patient_id, doctor_id, diagnosis, created_at) 
-       VALUES ($1, $2, $3, CURRENT_TIMESTAMP) 
+      `INSERT INTO medical_record (patient_id, doctor_id, appointment_id, diagnosis, created_date) 
+       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) 
        RETURNING *`,
-      [patient_id, doctor_id, diagnosis]
+      [patient_id, doctor_id, appointment_id || null, diagnosis]
     );
     
     res.json({ success: true, message: "Diagnosis added", data: result.rows[0] });
   } catch (err) {
     console.error("Error adding diagnosis:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// 21.5 UPDATE DIAGNOSIS
+// ==========================================
+app.put("/doctor/diagnosis/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { diagnosis } = req.body;
+
+    if (!diagnosis) {
+      return res.status(400).json({ error: "Diagnosis text required" });
+    }
+
+    const result = await pool.query(
+      `UPDATE medical_record SET diagnosis = $1 WHERE record_id = $2 RETURNING *`,
+      [diagnosis, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Diagnosis not found" });
+    }
+
+    res.json({ success: true, message: "Diagnosis updated", data: result.rows[0] });
+  } catch (err) {
+    console.error("Error updating diagnosis:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// 21.6 DELETE PRESCRIPTION
+// ==========================================
+app.delete("/doctor/prescription/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `DELETE FROM prescription WHERE prescription_id = $1 RETURNING *`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Prescription not found" });
+    }
+
+    res.json({ success: true, message: "Prescription deleted", data: result.rows[0] });
+  } catch (err) {
+    console.error("Error deleting prescription:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// 21.7 DELETE DIAGNOSIS
+// ==========================================
+app.delete("/doctor/diagnosis/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `DELETE FROM medical_record WHERE record_id = $1 RETURNING *`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Diagnosis not found" });
+    }
+
+    res.json({ success: true, message: "Diagnosis deleted", data: result.rows[0] });
+  } catch (err) {
+    console.error("Error deleting diagnosis:", err);
     res.status(500).json({ error: "Server error", details: err.message });
   }
 });
@@ -806,13 +1326,14 @@ app.get("/nurse/status", async (req, res) => {
 
     if (!email) return res.json({ status: "Available" });
 
+    // Check if nurse exists
     const result = await pool.query(
-      "SELECT status FROM nurses WHERE email = $1",
+      "SELECT nurse_id FROM nurse WHERE email = $1",
       [email]
     );
 
     if (result.rows.length > 0) {
-      res.json(result.rows[0]);
+      res.json({ status: "Available" });
     } else {
       res.json({ status: "Available" });
     }
@@ -833,16 +1354,17 @@ app.put("/nurse/status", async (req, res) => {
       return res.status(400).json({ error: "Email is required" });
     }
 
+    // Check if nurse exists
     const result = await pool.query(
-      "UPDATE nurses SET status = $1 WHERE email = $2 RETURNING *",
-      [status, email]
+      "SELECT nurse_id FROM nurse WHERE email = $1",
+      [email]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Nurse not found" });
     }
 
-    res.json({ success: true, nurse: result.rows[0] });
+    res.json({ success: true, status: "Updated" });
   } catch (err) {
     console.error("Database Error:", err);
     res.status(500).json({ error: "Server error" });
@@ -874,8 +1396,98 @@ app.listen(port, () => {
 // });
 
 // ==========================================
-// 26. COMPLETE APPOINTMENT
+// 24. GET PATIENT'S PRESCRIPTION AND DIAGNOSIS
 // ==========================================
+// ==========================================
+// 24.5 GET PRESCRIPTION/DIAGNOSIS BY APPOINTMENT ID
+// ==========================================
+app.get("/appointment/:appointment_id/prescription-diagnosis", async (req, res) => {
+  try {
+    const { appointment_id } = req.params;
+    
+    // Get prescription for this appointment
+    const prescriptionResult = await pool.query(`
+      SELECT prescription_id, treatment 
+      FROM prescription 
+      WHERE appointment_id = $1 
+      LIMIT 1
+    `, [appointment_id]);
+    
+    // Get diagnosis for this appointment
+    const diagnosisResult = await pool.query(`
+      SELECT record_id, diagnosis 
+      FROM medical_record 
+      WHERE appointment_id = $1 
+      LIMIT 1
+    `, [appointment_id]);
+    
+    res.json({
+      prescription: prescriptionResult.rows.length > 0 ? prescriptionResult.rows[0] : null,
+      diagnosis: diagnosisResult.rows.length > 0 ? diagnosisResult.rows[0] : null
+    });
+  } catch (err) {
+    console.error("Error fetching prescription/diagnosis:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// 24. GET PATIENT PRESCRIPTION/DIAGNOSIS
+// ==========================================
+app.get("/patient/:patient_id/prescription-diagnosis", async (req, res) => {
+  try {
+    const { patient_id } = req.params;
+    
+    // Get latest prescription for patient
+    const prescriptionResult = await pool.query(`
+      SELECT prescription_id, treatment 
+      FROM prescription 
+      WHERE patient_id = $1 
+      ORDER BY prescription_id DESC 
+      LIMIT 1
+    `, [patient_id]);
+    
+    // Get latest diagnosis for patient
+    const diagnosisResult = await pool.query(`
+      SELECT record_id, diagnosis 
+      FROM medical_record 
+      WHERE patient_id = $1 
+      ORDER BY record_id DESC 
+      LIMIT 1
+    `, [patient_id]);
+    
+    res.json({
+      prescription: prescriptionResult.rows.length > 0 ? prescriptionResult.rows[0] : null,
+      diagnosis: diagnosisResult.rows.length > 0 ? diagnosisResult.rows[0] : null
+    });
+  } catch (err) {
+    console.error("Error fetching prescription/diagnosis:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ==========================================
+// 25. GET DISEASE TRENDS
+// ==========================================
+app.get("/disease-trends", async (req, res) => {
+  try {
+    // Get count of each disease in medical_record
+    const result = await pool.query(`
+      SELECT 
+        diagnosis,
+        COUNT(*) as count
+      FROM medical_record
+      WHERE diagnosis IS NOT NULL AND diagnosis <> ''
+      GROUP BY diagnosis
+      ORDER BY count DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching disease trends:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
 // app.put("/appointments/complete/:id", async (req, res) => {
 //   try {
 //     const { id } = req.params;
