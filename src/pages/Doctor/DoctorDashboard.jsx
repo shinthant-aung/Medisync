@@ -178,7 +178,7 @@ const DoctorDashboard = () => {
               </tr>
             ) : (
               appointments.map((appt) => (
-                <tr key={appt.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                <tr key={appt.appointment_id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                   <td style={tdStyle}>
                     <span
                       onClick={() => handlePatientClick(appt)}

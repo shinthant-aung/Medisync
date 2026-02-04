@@ -204,7 +204,7 @@ app.post("/login", async (req, res) => {
 app.get("/patients", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT * FROM patient ORDER BY patient_id ASC
+      SELECT patient_id, name, gender, age, TO_CHAR(date_of_birth, 'YYYY-MM-DD') as date_of_birth, phone, address, allergy FROM patient ORDER BY patient_id ASC
     `);
     res.json(result.rows);
   } catch (err) {
@@ -218,7 +218,7 @@ app.get("/patients/:patient_id", async (req, res) => {
   try {
     const { patient_id } = req.params;
     const result = await pool.query(`
-      SELECT * FROM patient WHERE patient_id = $1
+      SELECT patient_id, name, gender, age, TO_CHAR(date_of_birth, 'YYYY-MM-DD') as date_of_birth, phone, address, allergy FROM patient WHERE patient_id = $1
     `, [patient_id]);
     
     if (result.rows.length > 0) {
@@ -340,7 +340,7 @@ app.get("/patients/:patient_id/appointments", async (req, res) => {
   try {
     const { patient_id } = req.params;
     const result = await pool.query(
-      `SELECT a.appointment_id, a.appointment_date, a.appointment_time, 
+      `SELECT a.appointment_id, TO_CHAR(a.appointment_date, 'YYYY-MM-DD') as appointment_date, a.appointment_time, 
               a.reason, a.status, a.doctor_id, d.name as doctor_name
        FROM appointment a
        LEFT JOIN doctor d ON a.doctor_id = d.doctor_id
@@ -399,7 +399,7 @@ app.get("/patients/:patient_id/medical-records", async (req, res) => {
 
     // Fetch prescriptions with appointment details
     const prescriptionsResult = await pool.query(
-      `SELECT DISTINCT ON (p.prescription_id) p.prescription_id, p.treatment as medicine_name, p.dosage, 
+      `SELECT DISTINCT ON (p.prescription_id) p.prescription_id, p.treatment as medicine_name, 
               p.created_at as date_prescribed, p.appointment_id, p.patient_id, p.doctor_id,
               d.name as doctor_name, 
               a.appointment_date, a.appointment_time, a.appointment_id as appointment_id_from_appt
@@ -443,6 +443,8 @@ app.post("/vitals", async (req, res) => {
       spo2,
     } = req.body;
 
+    console.log("Received vitals request:", req.body);
+
     // Get patient_id from patient name
     const patientResult = await pool.query(
       "SELECT patient_id FROM patient WHERE name = $1",
@@ -454,24 +456,36 @@ app.post("/vitals", async (req, res) => {
     }
 
     const patient_id = patientResult.rows[0].patient_id;
+    console.log("Found patient_id:", patient_id);
+    console.log("Values to insert:", {
+      patient_id,
+      appointment_id: appointment_id || null,
+      blood_pressure,
+      temperature: parseFloat(temperature),
+      heart_rate: parseFloat(heart_rate),
+      height: parseFloat(height),
+      weight: parseFloat(weight),
+      spo2: parseFloat(spo2),
+    });
 
     const newRecord = await pool.query(
       `INSERT INTO vital_signs 
-        (patient_id, doctor_id, appointment_id, blood_pressure, temperature, heart_rate, height, weight, SPO2, recorded_at) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP) 
-        RETURNING vital_id, patient_id, doctor_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, SPO2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at`,
+        (patient_id, appointment_id, blood_pressure, temperature, heart_rate, height, weight, spo2, recorded_at) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP) 
+        RETURNING vital_id, patient_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at`,
       [
         patient_id,
-        doctor_id || null,
         appointment_id || null,
         blood_pressure,
-        temperature,
-        heart_rate,
-        height || null,
-        weight || null,
-        spo2 || null,
+        parseFloat(temperature) || null,
+        parseFloat(heart_rate) || null,
+        parseFloat(height) || null,
+        parseFloat(weight) || null,
+        parseFloat(spo2) || null,
       ]
     );
+
+    console.log("Insert successful:", newRecord.rows[0]);
 
     // Update appointment status to 'Check-in'
     if (appointment_id) {
@@ -505,7 +519,7 @@ app.get("/vitals", async (req, res) => {
     
     // Get vital record for this appointment
     const result = await pool.query(
-      `SELECT vital_id, patient_id, doctor_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, recorded_at FROM vital_signs WHERE appointment_id = $1 LIMIT 1`,
+      `SELECT vital_id, patient_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, recorded_at FROM vital_signs WHERE appointment_id = $1 LIMIT 1`,
       [appointment_id]
     );
 
@@ -529,7 +543,7 @@ app.get("/vitals/appointment/:appointment_id", async (req, res) => {
     
     // Get vital record for this appointment
     const result = await pool.query(
-      `SELECT vital_id, patient_id, doctor_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at FROM vital_signs WHERE appointment_id = $1 LIMIT 1`,
+      `SELECT vital_id, patient_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at FROM vital_signs WHERE appointment_id = $1 LIMIT 1`,
       [appointment_id]
     );
 
@@ -570,7 +584,7 @@ app.get("/vitals/:patient_name", async (req, res) => {
     
     // Get latest vital record for the patient
     const result = await pool.query(
-      `SELECT vital_id, patient_id, doctor_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at FROM vital_signs WHERE patient_id = $1 ORDER BY vital_id DESC LIMIT 1`,
+      `SELECT vital_id, patient_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at FROM vital_signs WHERE patient_id = $1 ORDER BY vital_id DESC LIMIT 1`,
       [patient_id]
     );
 
@@ -606,9 +620,9 @@ app.put("/vitals/:vital_id", async (req, res) => {
 
     const result = await pool.query(
       `UPDATE vital_signs 
-       SET blood_pressure = $1, temperature = $2, heart_rate = $3, height = $4, weight = $5, SPO2 = $6, doctor_id = $7, appointment_id = $8
-       WHERE vital_id = $9
-       RETURNING vital_id, patient_id, doctor_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, SPO2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at`,
+       SET blood_pressure = $1, temperature = $2, heart_rate = $3, height = $4, weight = $5, spo2 = $6, appointment_id = $7
+       WHERE vital_id = $8
+       RETURNING vital_id, patient_id, appointment_id, height, weight, blood_pressure, temperature, heart_rate, spo2, TO_CHAR(recorded_at, 'HH24:MI:SS') as recorded_at`,
       [
         blood_pressure,
         temperature,
@@ -616,7 +630,6 @@ app.put("/vitals/:vital_id", async (req, res) => {
         height || null,
         weight || null,
         spo2 || null,
-        doctor_id || null,
         appointment_id || null,
         vital_id,
       ]
@@ -644,7 +657,7 @@ app.get("/appointments", async (req, res) => {
         a.appointment_id,
         a.patient_id,
         a.doctor_id,
-        a.appointment_date,
+        TO_CHAR(a.appointment_date, 'YYYY-MM-DD') as appointment_date,
         a.appointment_time,
         a.reason,
         a.status,
@@ -885,8 +898,6 @@ app.delete("/nurses/:id", async (req, res) => {
       id,
     ]);
     if (result.rows.length > 0) {
-      // Delete related vital signs records first
-      await pool.query("DELETE FROM vital_signs WHERE nurse_id = $1", [id]);
       // Now delete the nurse
       await pool.query("DELETE FROM nurse WHERE nurse_id = $1", [id]);
       res.json({ success: true, message: "Nurse account deleted successfully" });
@@ -948,60 +959,6 @@ app.post("/appointments", async (req, res) => {
       ]
     );
     res.json(newAppt.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error", details: err.message });
-  }
-});
-
-// ==========================================
-// UPDATE APPOINTMENT
-// ==========================================
-app.put("/appointments/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      patient_name,
-      doctor_name,
-      appointment_date,
-      appointment_time,
-      reason,
-    } = req.body;
-
-    // Get patient_id from patient name
-    const patientResult = await pool.query(
-      "SELECT patient_id FROM patient WHERE name = $1",
-      [patient_name]
-    );
-
-    if (patientResult.rows.length === 0) {
-      return res.status(400).json({ error: "Patient not found" });
-    }
-
-    const patient_id = patientResult.rows[0].patient_id;
-
-    // Get doctor_id from doctor name
-    const doctorResult = await pool.query(
-      "SELECT doctor_id FROM doctor WHERE name = $1",
-      [doctor_name]
-    );
-
-    if (doctorResult.rows.length === 0) {
-      return res.status(400).json({ error: "Doctor not found" });
-    }
-
-    const doctor_id = doctorResult.rows[0].doctor_id;
-
-    const updatedAppt = await pool.query(
-      "UPDATE appointment SET patient_id = $1, doctor_id = $2, appointment_date = $3, appointment_time = $4, reason = $5 WHERE appointment_id = $6 RETURNING *",
-      [patient_id, doctor_id, appointment_date, appointment_time, reason, id]
-    );
-
-    if (updatedAppt.rows.length === 0) {
-      return res.status(404).json({ error: "Appointment not found" });
-    }
-
-    res.json(updatedAppt.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error", details: err.message });
@@ -1119,8 +1076,8 @@ app.post("/doctor/prescription", async (req, res) => {
     
     // Insert into prescription table with patient_id, doctor_id, and appointment_id
     const result = await pool.query(
-      `INSERT INTO prescription (treatment, dosage, patient_id, doctor_id, appointment_id, created_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING *`,
-      [prescription, null, patient_id, doctor_id, appointment_id || null]
+      `INSERT INTO prescription (treatment, patient_id, doctor_id, appointment_id, created_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) RETURNING *`,
+      [prescription, patient_id, doctor_id, appointment_id || null]
     );
     res.json({ success: true, message: "Prescription added", data: result.rows[0] });
   } catch (err) {

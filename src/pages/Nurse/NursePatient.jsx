@@ -241,11 +241,7 @@ const NursePatient = () => {
                   <p style={{ margin: "0 0 4px 0", fontWeight: "600", color: "#475569" }}>Date of Birth</p>
                   <p style={{ margin: 0, color: "#1e293b" }}>
                     {patientHistory.date_of_birth
-                      ? new Date(patientHistory.date_of_birth).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })
+                      ? patientHistory.date_of_birth.split("T")[0]
                       : "-"}
                   </p>
                 </div>

@@ -32,7 +32,8 @@ CREATE TABLE patient (
 	age INT,
     date_of_birth DATE,
     phone VARCHAR(20),
-    address TEXT
+    address TEXT,
+	allergy text
 );
 
 -- 3. Create Appointment Table (Links Patient, Doctor, and Admin)
@@ -50,6 +51,7 @@ CREATE TABLE prescription (
     prescription_id SERIAL PRIMARY KEY,
 	patient_id INT REFERENCES patient(patient_id),
 	doctor_id INT REFERENCES doctor(doctor_id),
+	appointment_id INT REFERENCES appointment(appointment_id),
     treatment  TEXT,
     dosage VARCHAR(100),
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -61,6 +63,7 @@ CREATE TABLE medical_record (
     patient_id INT REFERENCES patient(patient_id),
     doctor_id INT REFERENCES doctor(doctor_id),
 	prescription_id INT REFERENCES prescription(prescription_id),
+	appointment_id INT REFERENCES appointment(appointment_id),
     diagnosis TEXT,
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -76,7 +79,6 @@ CREATE TABLE vital_signs (
     temperature DECIMAL(4,1),
     heart_rate FLOAT,
 	SPO2 FLOAT,
-	allergy Text,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -93,7 +95,5 @@ CREATE TABLE medicine (
 INSERT INTO admin (name, email, password) VALUES 
 ('Shin Thant Aung', 'shin@admin.com', 'admin');
 
-ALTER TABLE vital_signs  DROP COLUMN allergy;
-ALTER TABLE patient ADD COLUMN allergy text;
-ALTER TABLE prescription ADD COLUMN appointment_id INT REFERENCES appointment(appointment_id);
-ALTER TABLE medical_record ADD COLUMN appointment_id INT REFERENCES appointment(appointment_id);
+ALTER TABLE prescription DROP COLUMN dosage;
+ALTER TABLE vital_signs DROP COLUMN doctor_id;
