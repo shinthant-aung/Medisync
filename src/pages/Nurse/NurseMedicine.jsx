@@ -113,7 +113,14 @@ const NurseMedicine = () => {
             marginBottom: "30px",
           }}
         >
-          <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#1e293b", margin: 0 }}>
+          <h1
+            style={{
+              fontSize: "28px",
+              fontWeight: "700",
+              color: "#1e293b",
+              margin: 0,
+            }}
+          >
             Medicine Inventory
           </h1>
           <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
@@ -184,7 +191,9 @@ const NurseMedicine = () => {
           {filteredMedicines.length === 0 ? (
             <div style={{ padding: "40px", textAlign: "center" }}>
               <p style={{ color: "#94a3b8", fontSize: "15px" }}>
-                {searchTerm ? "No medicines found" : "No medicines registered yet"}
+                {searchTerm
+                  ? "No medicines found"
+                  : "No medicines registered yet"}
               </p>
             </div>
           ) : (
@@ -197,17 +206,50 @@ const NurseMedicine = () => {
                 }}
               >
                 <thead>
-                  <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
-                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                  <tr
+                    style={{
+                      background: "#f1f5f9",
+                      borderBottom: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <th
+                      style={{
+                        padding: "16px",
+                        textAlign: "left",
+                        fontWeight: "600",
+                        color: "#475569",
+                      }}
+                    >
                       Medicine Name
                     </th>
-                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                    <th
+                      style={{
+                        padding: "16px",
+                        textAlign: "left",
+                        fontWeight: "600",
+                        color: "#475569",
+                      }}
+                    >
                       Stock Quantity
                     </th>
-                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                    <th
+                      style={{
+                        padding: "16px",
+                        textAlign: "left",
+                        fontWeight: "600",
+                        color: "#475569",
+                      }}
+                    >
                       Expiry Date
                     </th>
-                    <th style={{ padding: "16px", textAlign: "left", fontWeight: "600", color: "#475569" }}>
+                    <th
+                      style={{
+                        padding: "16px",
+                        textAlign: "left",
+                        fontWeight: "600",
+                        color: "#475569",
+                      }}
+                    >
                       Action
                     </th>
                   </tr>
@@ -235,18 +277,39 @@ const NurseMedicine = () => {
                           background: idx % 2 === 0 ? "#ffffff" : "#f8fafc",
                           transition: "background 0.2s",
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = "#f1f5f9")
+                        }
                         onMouseLeave={(e) =>
-                          (e.currentTarget.style.background = idx % 2 === 0 ? "#ffffff" : "#f8fafc")
+                          (e.currentTarget.style.background =
+                            idx % 2 === 0 ? "#ffffff" : "#f8fafc")
                         }
                       >
-                        <td style={{ padding: "16px", color: "#1e293b", fontWeight: "500" }}>
+                        <td
+                          style={{
+                            padding: "16px",
+                            color: "#1e293b",
+                            fontWeight: "500",
+                          }}
+                        >
                           {med.medicine_name}
                         </td>
                         <td style={{ padding: "16px", color: "#64748b" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
                             <button
-                              onClick={() => updateQty(med.medicine_id, med.stock_quantity, -1)}
+                              onClick={() =>
+                                updateQty(
+                                  med.medicine_id,
+                                  med.stock_quantity,
+                                  -1
+                                )
+                              }
                               style={{
                                 background: "#e2e8f0",
                                 border: "1px solid #cbd5e1",
@@ -266,15 +329,25 @@ const NurseMedicine = () => {
                               style={{
                                 fontWeight: "600",
                                 color:
-                                  parseInt(med.stock_quantity) === 0 ? "#dc2626" : "#1e293b",
+                                  parseInt(med.stock_quantity) === 0
+                                    ? "#dc2626"
+                                    : "#1e293b",
                                 minWidth: "60px",
                                 textAlign: "center",
                               }}
                             >
-                              {parseInt(med.stock_quantity) === 0 ? "Out" : med.stock_quantity}
+                              {parseInt(med.stock_quantity) === 0
+                                ? "Out of Stock"
+                                : med.stock_quantity}
                             </span>
                             <button
-                              onClick={() => updateQty(med.medicine_id, med.stock_quantity, 1)}
+                              onClick={() =>
+                                updateQty(
+                                  med.medicine_id,
+                                  med.stock_quantity,
+                                  1
+                                )
+                              }
                               style={{
                                 background: "#e2e8f0",
                                 border: "1px solid #cbd5e1",
@@ -294,11 +367,14 @@ const NurseMedicine = () => {
                         </td>
                         <td style={{ padding: "16px", color: "#64748b" }}>
                           {med.expiry_date
-                            ? new Date(med.expiry_date).toLocaleDateString("en-US", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })
+                            ? new Date(med.expiry_date).toLocaleDateString(
+                                "en-US",
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                }
+                              )
                             : "-"}
                         </td>
                         <td style={{ padding: "16px" }}>
@@ -315,8 +391,12 @@ const NurseMedicine = () => {
                               fontWeight: "600",
                               transition: "background 0.2s",
                             }}
-                            onMouseEnter={(e) => (e.target.style.backgroundColor = "#fecaca")}
-                            onMouseLeave={(e) => (e.target.style.backgroundColor = "#fee2e2")}
+                            onMouseEnter={(e) =>
+                              (e.target.style.backgroundColor = "#fecaca")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.target.style.backgroundColor = "#fee2e2")
+                            }
                           >
                             Remove
                           </button>
@@ -419,7 +499,10 @@ const NurseMedicine = () => {
                     placeholder="Enter medicine name"
                     value={formData.medicine_name}
                     onChange={(e) =>
-                      setFormData({ ...formData, medicine_name: e.target.value })
+                      setFormData({
+                        ...formData,
+                        medicine_name: e.target.value,
+                      })
                     }
                     required
                     style={{
@@ -451,7 +534,10 @@ const NurseMedicine = () => {
                     placeholder="Enter stock quantity"
                     value={formData.stock_quantity}
                     onChange={(e) =>
-                      setFormData({ ...formData, stock_quantity: e.target.value })
+                      setFormData({
+                        ...formData,
+                        stock_quantity: e.target.value,
+                      })
                     }
                     required
                     style={{
@@ -497,7 +583,9 @@ const NurseMedicine = () => {
                   />
                 </div>
 
-                <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                <div
+                  style={{ display: "flex", gap: "10px", marginTop: "20px" }}
+                >
                   <button
                     type="submit"
                     style={{
