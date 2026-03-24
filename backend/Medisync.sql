@@ -93,7 +93,7 @@ CREATE TABLE medicine (
 
 -- 1. Insert Admins (Must be first, as they register others)
 INSERT INTO admin (name, email, password) VALUES 
-('Shin Thant Aung', 'shin@admin.com', 'admin');
+('Admin', 'admin@amedisync.com', 'admin');
 
 ALTER TABLE prescription DROP COLUMN dosage;
 ALTER TABLE vital_signs DROP COLUMN doctor_id;
